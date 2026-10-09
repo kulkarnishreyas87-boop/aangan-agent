@@ -1,0 +1,18 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+
+# dependencies and tooling
+node_modules/
+.claude/
+skills-lock.json
+.neon
+
+# the raw studio skill with customer-scenario examples; vaani/AGENT_PROMPT.md is what runs
+vaani/skill/
+
+# logs and OS files
+*.log
+.DS_Store
+Thumbs.db

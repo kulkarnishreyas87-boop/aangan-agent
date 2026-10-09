@@ -1,0 +1,277 @@
+<title>Aangan Enquiry Components Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: swimlane grid. Actors are rows; Trigger, Input, Context, Processing, AI, Output are columns. Dashed connectors are drawn over the grid. */
+:root{
+  --bg:#f6f7f9; --fg:#14213a; --muted:#5b6678; --line:#c9d0dc; --head:#14213a; --headfg:#f2f5fa; --card:#ffffff;
+  --l1:#e8f0fb; --l2:#fdf6dc; --l3:#e6f5ea; --l4:#fbe6ef; --l5:#e3f4f2; --l6:#e9e7f8; --l7:#fde9e1; --l8:#fff0e0; --l9:#e9edf3; --l10:#edf5dc; --l11:#eceae6;
+  --b1:#3b73c9; --b2:#c99a1e; --b3:#2f9a52; --b4:#cf3f7c; --b5:#17897f; --b6:#6a5ac8; --b7:#d2603a; --b8:#e8590c; --b9:#4a5a78; --b10:#5f8f1a; --b11:#3b3b3b;
+  --arrow:#14213a; --loop:#b3261e;
+  --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1521; --fg:#e7ebf3; --muted:#9aa5b8; --line:#2d3a52; --head:#1b2740; --headfg:#e7ebf3; --card:#18223a;
+  --l1:#13203a; --l2:#2a2512; --l3:#122a1c; --l4:#2e1522; --l5:#10292a; --l6:#1b1a38; --l7:#2e1b14; --l8:#33200f; --l9:#1a2233; --l10:#1f2a12; --l11:#242321;
+  --b1:#6f9eea; --b2:#e3b64a; --b3:#58c07a; --b4:#ee79a8; --b5:#4cc9bb; --b6:#9a8cf0; --b7:#f0875f; --b8:#ff9a5c; --b9:#9fb0cf; --b10:#a6d65a; --b11:#c9c6bf; --arrow:#aab6cf; --loop:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1521; --fg:#e7ebf3; --muted:#9aa5b8; --line:#2d3a52; --head:#1b2740; --headfg:#e7ebf3; --card:#18223a;
+  --l1:#13203a; --l2:#2a2512; --l3:#122a1c; --l4:#2e1522; --l5:#10292a; --l6:#1b1a38; --l7:#2e1b14; --l8:#33200f; --l9:#1a2233; --l10:#1f2a12; --l11:#242321;
+  --b1:#6f9eea; --b2:#e3b64a; --b3:#58c07a; --b4:#ee79a8; --b5:#4cc9bb; --b6:#9a8cf0; --b7:#f0875f; --b8:#ff9a5c; --b9:#9fb0cf; --b10:#a6d65a; --b11:#c9c6bf; --arrow:#aab6cf; --loop:#ff8a80; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);padding-inline:16px;padding-block:24px 48px;font-size:14px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 18px;max-width:80ch}
+.scroll{overflow-x:auto;border-radius:8px;border:1px solid var(--line)}
+.map{position:relative;display:grid;grid-template-columns:124px repeat(6,minmax(170px,1fr));min-width:1240px;background:var(--card)}
+.h{background:var(--head);color:var(--headfg);font-weight:600;text-align:center;padding:14px 6px;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.actor{background:var(--head);color:var(--headfg);font-weight:600;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:10px 8px;border-top:1px solid var(--line)}
+.actor small{font-weight:400;opacity:.8;font-size:12px}
+.cell{display:flex;flex-direction:column;justify-content:center;gap:14px;padding:14px 12px;min-height:96px;border-left:1px dashed var(--line)}
+.r2{background:var(--l1)}.r3{background:var(--l2)}.r4{background:var(--l3)}.r5{background:var(--l4)}.r6{background:var(--l5)}.r7{background:var(--l6)}.r8{background:var(--l7)}.r9{background:var(--l8)}.r10{background:var(--l9)}.r11{background:var(--l10)}.r12{background:var(--l11)}
+.box{position:relative;z-index:2;background:var(--card);border:2px solid var(--bc);border-radius:8px;padding:9px 10px;font-size:12.5px;line-height:1.38;text-align:center}
+.box b{font-weight:600}
+.b2{--bc:var(--b1)}.b3{--bc:var(--b2)}.b4{--bc:var(--b3)}.b5{--bc:var(--b4)}.b6{--bc:var(--b5)}.b7{--bc:var(--b6)}.b8{--bc:var(--b7)}.b9{--bc:var(--b8)}.b10{--bc:var(--b9)}.b11{--bc:var(--b10)}.b12{--bc:var(--b11)}
+svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;overflow:visible}
+svg.wires path{fill:none;stroke:var(--arrow);stroke-width:1.5;stroke-dasharray:5 4}
+svg.wires path.loop{stroke:var(--loop)}
+svg.wires polygon{fill:var(--arrow)}
+svg.wires polygon.loop{fill:var(--loop)}
+.lbl{font-family:var(--mono);font-size:10.5px;fill:var(--loop)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;margin-top:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.card h2{font-size:12px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--mono)}
+.card p{margin:0 0 8px}.card ul,.card ol{margin:0;padding-left:20px}.card li{margin-bottom:6px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.tw{overflow-x:auto}
+.tag{font-family:var(--mono);font-size:11px}
+.wide{grid-column:1/-1}
+</style>
+
+<div class="wrap">
+<h1>Aangan Studio, Phone Enquiry Agent: Components Map</h1>
+<p class="sub">Case 03, incoming calls only. A call is a conversation, so the map has a loop: Vaani carries the call and sends every caller turn to our server. On each turn Gemini decides using qualified.md, a rules check guards it, and Gemini then speaks using the Aangan skill. The call only ends on a final route. Scheduling only starts after Gemini decides the lead is qualified; then the auto-scheduler books the consultation in Cal.com from the transcript. Neon holds the record and HubSpot shows it. WhatsApp and the web form can reuse the same context, decision and output layers.</p>
+
+<div class="scroll"><div class="map" id="map">
+  <div class="h">Actor</div><div class="h">Trigger</div><div class="h">Input</div><div class="h">Context</div><div class="h">Processing</div><div class="h">AI</div><div class="h">Output</div>
+
+  <!-- Caller -->
+  <div class="actor">Caller<small>(Prospect)</small></div>
+  <div class="cell r2"><div class="box b2" id="c1">Prospect calls the studio number, any hour. 33% of calls come after 7pm.</div></div>
+  <div class="cell r2"></div><div class="cell r2"></div><div class="cell r2"></div><div class="cell r2"></div>
+  <div class="cell r2"><div class="box b2" id="c2">Caller hears a polite decline, a senior call-back promise, or that a consultation time will be confirmed by a call-back right after.</div></div>
+
+  <!-- Vaani AI -->
+  <div class="actor">Vaani<small>(Voice and phone)</small></div>
+  <div class="cell r3"></div>
+  <div class="cell r3"><div class="box b3" id="v1">Vaani answers on the first ring and turns speech into text. It sends every caller turn to our server over a WebSocket. The caller's number comes in its call_started webhook.</div></div>
+  <div class="cell r3"></div>
+  <div class="cell r3"></div><div class="cell r3"></div>
+  <div class="cell r3"><div class="box b3" id="v2">Vaani speaks the reply Gemini wrote, after the price filter. Clarify loops to the next turn. Decline, Escalate and Log only end the call, as does Qualify once availability is taken.</div></div>
+
+  <!-- System -->
+  <div class="actor">System<small>(Backend)</small></div>
+  <div class="cell r4"></div><div class="cell r4"></div>
+  <div class="cell r4"><div class="box b4" id="sh">Reads Neon: earlier calls from this number (dropped call, existing client).</div></div>
+  <div class="cell r4"><div class="box b4" id="s2">Builds each turn's request: transcript so far plus caller history, asking Gemini for a decision. Phone number stays out.</div></div>
+  <div class="cell r4"></div>
+  <div class="cell r4"><div class="box b4" id="rules"><b>Rules check</b> on Gemini's JSON: service-area list, lead time, out-of-scope types (restaurant, hotel, retail, gym). Any failed criterion declines. Criteria 4 or 5 unclear still qualify, flagged. A price filter scrubs every reply before it is spoken.</div></div>
+
+  <!-- Gemini -->
+  <div class="actor">Gemini<small>(Decision layer)</small></div>
+  <div class="cell r5"></div><div class="cell r5"></div>
+  <div class="cell r5">
+    <div class="box b5" id="gk"><b>qualified.md</b>, Nikhil's rubric: the five criteria and what to do when one is unclear. Used for the decision only.</div>
+    <div class="box b5" id="gs"><b>Aangan skill</b> (aangan-enquiry-handling): studio policies, response playbook, tone. English, Hindi, Marathi. Used for the words only.</div>
+  </div>
+  <div class="cell r5"></div>
+  <div class="cell r5"><div class="box b5" id="g1"><b>Gemini decides each turn</b> using qualified.md: pass, fail or unclear per criterion with evidence, and the route (Qualify, Clarify, Decline, Escalate). <b>Then it speaks:</b> writes the reply in the playbook's words for that route and the caller's language. After the call it writes the handoff note.</div></div>
+  <div class="cell r5"></div>
+
+  <!-- Neon -->
+  <div class="actor">Neon<small>(Postgres database)</small></div>
+  <div class="cell r6"></div><div class="cell r6"></div><div class="cell r6"></div><div class="cell r6"></div><div class="cell r6"></div>
+  <div class="cell r6"><div class="box b6" id="no">After the call, Vaani's call_postprocessing webhook delivers the transcript. Neon saves call, transcript, criteria, route, answer time, booked slot and cost (telephony, speech, Gemini tokens).</div></div>
+
+  <!-- Email -->
+  <div class="actor">Email<small>(Resend)</small></div>
+  <div class="cell r7"></div><div class="cell r7"></div><div class="cell r7"></div><div class="cell r7"></div><div class="cell r7"></div>
+  <div class="cell r7"><div class="box b7" id="tg">Handoff email to the designers with the note, the caller's number and Claim, Won and Lost links. The booked time follows in a second email. Escalation email to Nikhil. Call-back task email for dropped calls.</div></div>
+
+  <!-- Designer -->
+  <div class="actor">Designer<small>(Human)</small></div>
+  <div class="cell r8"></div><div class="cell r8"></div><div class="cell r8"></div><div class="cell r8"></div><div class="cell r8"></div>
+  <div class="cell r8"><div class="box b8" id="des">Designer sees the booked time, opens the consultation with everything already asked, then uses the Won or Lost link in the email.</div></div>
+
+  <!-- HubSpot -->
+  <div class="actor">HubSpot<small>(CRM dashboard)</small></div>
+  <div class="cell r9"></div><div class="cell r9"></div><div class="cell r9"></div>
+  <div class="cell r9"><div class="box b9" id="hs1"><b>Sync from Neon</b> creates or updates a HubSpot contact and deal: outcome, answer time, call cost, plus the designer's Won or Lost.</div></div>
+  <div class="cell r9"></div>
+  <div class="cell r9"><div class="box b9" id="hs2"><b>HubSpot dashboard:</b> calls, answer time, qualified rate, decline reasons, bookings, deal stages, cost per call.</div></div>
+
+  <!-- Founder -->
+  <div class="actor">Founder<small>(Human)</small></div>
+  <div class="cell r10"></div><div class="cell r10"></div><div class="cell r10"></div><div class="cell r10"></div><div class="cell r10"></div>
+  <div class="cell r10"><div class="box b10" id="nik">Nikhil opens one HubSpot dashboard: volume, qualified rate, bookings, pipeline value and the cost of the tool. No manual pulls.</div></div>
+
+  <!-- Cal.com -->
+  <div class="actor">Cal.com<small>(Calendar)</small></div>
+  <div class="cell r12"></div><div class="cell r12"></div>
+  <div class="cell r12"><div class="box b12" id="ck"><b>Cal.com</b> holds each designer's availability. Open slots come from its API, with site visit and phone consultation event types.</div></div>
+  <div class="cell r12"></div><div class="cell r12"></div>
+  <div class="cell r12"><div class="box b12" id="co">Cal.com creates the booking, blocks the slot, syncs the designer's calendar and sends the customer an invite with a reschedule link.</div></div>
+
+  <!-- Auto-scheduler -->
+  <div class="actor">Auto-scheduler<small>(After the call)</small></div>
+  <div class="cell r11"><div class="box b11" id="p1"><b>Gate:</b> starts only when Gemini's final route is Qualify and the rules check agrees. Decline, Clarify and Escalate calls never reach here.</div></div>
+  <div class="cell r11"><div class="box b11" id="p2">Full transcript from Vaani's webhook, as saved in Neon, with the caller's number.</div></div>
+  <div class="cell r11"><div class="box b11" id="p3">Open designer slots, read from Cal.com. Rules: earliest slot that fits, one designer, site visit for big homes and offices.</div></div>
+  <div class="cell r11"><div class="box b11" id="p4">Backend sends the transcript and the Cal.com slots to Gemini and asks for the best slot.</div></div>
+  <div class="cell r11"><div class="box b11" id="p5"><b>Gemini reads the transcript</b> for what the caller said about availability (days, times, who attends, site visit or call) and picks the best open slot. If none was stated, it offers the earliest two.</div></div>
+  <div class="cell r11">
+    <div class="box b11" id="p6">Backend books the slot through the Cal.com API and saves the booking ID in Neon. The booking email and HubSpot deal update from it.</div>
+    <div class="box b11" id="p7"><b>Vaani calls the customer back</b> through its trigger-call API with a confirmation agent. Gemini reads that transcript to mark it confirmed. Not confirmed, or no answer after two tries, becomes an email task.</div>
+  </div>
+
+  <svg class="wires" id="wires" aria-hidden="true"></svg>
+</div></div>
+
+<div class="cards">
+  <div class="card wide"><h2>One call, step by step</h2><ol>
+    <li>The caller dials. Vaani answers on the first ring, so the five-minute promise is met in seconds, day or night, and opens a WebSocket to our server for the call.</li>
+    <li>After each thing the caller says, Vaani sends the conversation so far. Our server looks up the caller's history in Neon.</li>
+    <li>Gemini decides with qualified.md only: it scores the five criteria with evidence and picks a route.</li>
+    <li>The rules check can overrule Gemini: a location outside the service-area list, a lead time under the minimum, or an out-of-scope project type.</li>
+    <li>Gemini then writes the spoken reply from the Aangan skill for that route, and the price filter checks it before Vaani speaks it. Clarify asks one question and loops. Qualify asks when the caller is free, then says a time will be confirmed right after. Decline closes politely. Escalate promises a senior call-back.</li>
+    <li>When the call ends, Vaani's call_postprocessing webhook delivers the transcript. Neon stores everything first. Email (Resend) and HubSpot are fed from that record, so nothing is lost if an email or a sync fails.</li>
+    <li>Scheduling is gated on the decision. Only when Gemini's final route is Qualify, and the rules check agrees, does the saved record start the auto-scheduler. Decline, Clarify and Escalate calls are never scheduled.</li>
+    <li>For a qualified call, Gemini then reads what the caller said about availability and picks the best open slot. The backend books it in Cal.com and saves the booking ID in Neon. Vaani calls the customer back to confirm, and Gemini reads that transcript. The handoff email and HubSpot deal show the booked time.</li>
+  </ol></div>
+
+  <div class="card"><h2>Who knows what</h2><div class="tw"><table>
+    <tr><th>Part</th><th>Reads</th><th>Job</th></tr>
+    <tr><td>Vaani</td><td>Nothing of ours</td><td>Carries the call: phone line, speech to text, text to speech. Our server decides and writes every reply</td></tr>
+    <tr><td>Gemini, decision</td><td>qualified.md only</td><td>Whether the enquiry is worth a designer's time</td></tr>
+    <tr><td>Gemini, speech</td><td>The Aangan skill</td><td>The words: wording, language, scripts for price, decline, rushed timeline, complaint</td></tr>
+    <tr><td>Rules check</td><td>Service-area list, lead-time minimum, out-of-scope project types, price patterns</td><td>Hard limits and the price filter, in code</td></tr>
+    <tr><td>Cal.com</td><td>Designers' calendars</td><td>Source of truth for open slots and bookings</td></tr>
+  </table></div></div>
+
+  <div class="card"><h2>Routes</h2><div class="tw"><table>
+    <tr><th>Route</th><th>When</th><th>Calls</th></tr>
+    <tr><td>Qualify</td><td>All five pass, or criteria 4 or 5 unclear (flagged in the note). Only these calls are auto-scheduled</td><td class="tag">T01, T05, T11, T14</td></tr>
+    <tr><td>Clarify</td><td>Criteria 1, 2 or 3 unclear: one direct question</td><td class="tag">T07, T12</td></tr>
+    <tr><td>Decline</td><td>Any criterion fails, or out of scope</td><td class="tag">T03, T04, T10, T19</td></tr>
+    <tr><td>Escalate</td><td>Existing-client complaint: senior call-back in 15 minutes</td><td class="tag">T09, T16</td></tr>
+    <tr><td>Log only</td><td>Dropped or missed call: number saved, call-back task</td><td class="tag">T08, T17</td></tr>
+  </table></div></div>
+
+  <div class="card"><h2>Why Gemini plus a rules check</h2>
+    <ul>
+      <li>Callers talk in free form. Gemini reads intent and evidence, such as "my husband knows we're calling", which a form cannot.</li>
+      <li>Gemini reads only qualified.md, so the decision follows Nikhil's own rubric and not general advice.</li>
+      <li>Hard limits are code, not judgement: the service-area list, the lead-time minimum and the no-price rule.</li>
+      <li>Gemini outputs structured JSON, so every decision is stored and can be audited in HubSpot.</li>
+      <li>A Flash-class model keeps each turn fast enough for a live call.</li>
+    </ul></div>
+
+  <div class="card"><h2>What Neon holds</h2>
+    <ul>
+      <li><b>calls</b>: time, answer time, duration, outcome, transcript.</li>
+      <li><b>criteria_results</b>: status and evidence for each of the five criteria.</li>
+      <li><b>handoffs</b>: note, designer, claimed time, Won or Lost.</li>
+      <li><b>sync_log</b>: what was last pushed to HubSpot, and any failures to retry.</li>
+      <li><b>bookings</b>: Cal.com booking ID, slot, designer, status and confirmation-call attempts.</li>
+      <li><b>costs</b>: telephony minutes, speech and Gemini tokens per call, so HubSpot can show cost per call and per booking.</li>
+    </ul></div>
+
+  <div class="card"><h2>Why Cal.com for scheduling</h2>
+    <ul>
+      <li>It already knows each designer's availability and syncs with their own calendar, so the system never guesses at free time.</li>
+      <li>Booking through its API blocks the slot at once, so two callers cannot get the same time.</li>
+      <li>The customer gets an invite and a reschedule link without extra work.</li>
+      <li>Webhooks report a reschedule or cancel back to Neon, so HubSpot and the emails stay correct.</li>
+    </ul></div>
+
+  <div class="card"><h2>Why HubSpot sits on top of Neon</h2>
+    <ul>
+      <li>Neon is the system of record: every call, decision and cost, written first.</li>
+      <li>HubSpot is where Nikhil and the designers already work with leads. Each qualified call becomes a contact and a deal.</li>
+      <li>Deal stages (Enquiry, Qualified, Consultation booked, Won, Lost) give conversion by response time without a manual pull.</li>
+      <li>Call cost and answer time go in as custom properties, so the tool's own cost shows on the same dashboard.</li>
+    </ul></div>
+
+  <div class="card"><h2>The Cut</h2>
+    <p>Nikhil asked for standard per-square-foot quotes on the call. The map does not build it.</p>
+    <ul>
+      <li>pricing.md says indicative only and varies by site, materials and timeline.</li>
+      <li>His own rubric says never quote and never probe on budget.</li>
+      <li>In T02 and T13 the callers accepted the deflection and still booked.</li>
+      <li>So pricing.md is given to neither Gemini nor Vaani. Gemini says the playbook's fixed pricing line, and the price filter blocks any figure in every spoken reply.</li>
+    </ul></div>
+
+  <div class="card"><h2>Handoff channel: Resend email</h2>
+    <ul>
+      <li>Email reaches designers on phone and desktop with no extra app to join, and Gmail inboxes work.</li>
+      <li>The backend sends it through Resend with an idempotency key, so a retried job never sends the same email twice.</li>
+      <li>The note carries the caller's number and signed Claim, Won and Lost links. A link opens a confirmation page, so a mail scanner cannot change a lead.</li>
+      <li>Trade-off: an email can sit unread longer than a chat push. Escalations get their own subject line and go straight to Nikhil's address.</li>
+    </ul></div>
+
+  <div class="card"><h2>Open questions for Nikhil</h2>
+    <ul>
+      <li>Minimum lead time: services.md says 6 weeks, qualified.md says 8 to 10. T15 was booked at 6.</li>
+      <li>Commercial minimum: the skill says 500 sq ft (from T18), but services.md and qualified.md do not state it.</li>
+      <li>Fringe areas such as Talegaon: qualified.md says decline, the skill says hold for the studio head. The map follows qualified.md for the decision. Confirm which rule wins.</li>
+      <li>Who is the named senior person for escalations, and what is the after-hours rule?</li>
+      <li>Which designers' calendars connect to Cal.com, and do site visits and phone consultations need separate event types?</li>
+      <li>The map assumes the confirmation is an outbound Vaani call, with an email task after two missed tries. Should it be WhatsApp or SMS instead?</li>
+      <li>Latency: each turn runs two Gemini calls in a row, about 3 seconds, against Vaani's advertised 450 ms. Tune after a real call, for example by merging the two calls.</li>
+      <li>Does the current HubSpot plan allow custom properties and the dashboards needed at about 200 enquiries a month?</li>
+    </ul></div>
+</div>
+</div>
+
+<script>
+(function(){
+  // type: e = elbow through the gutter, u/d = straight up/down in one column, dr = down then right, ld = left then down
+  var edges=[
+    ["c1","v1","e"],["v1","sh","dr"],["sh","s2","e"],["gs","g1","e"],["gk","g1","e"],["s2","g1","e"],["g1","rules","e"],
+    ["rules","v2","u"],["v2","c2","u"],["c2","v1","ld","loop"],
+    ["rules","no","d"],["no","tg","d"],["tg","des","d"],["no","hs1","ld"],["hs1","hs2","e"],["hs2","nik","d"],["no","p1","ld"],["p1","p2","e"],["p2","p3","e"],["p3","p4","e"],["p4","p5","e"],["p5","p6","e"],["p6","p7","d"],["ck","p3","d"],["p6","co","u"]
+  ];
+  function draw(){
+    var m=document.getElementById("map"),svg=document.getElementById("wires");
+    var mr=m.getBoundingClientRect();
+    svg.setAttribute("viewBox","0 0 "+mr.width+" "+mr.height);
+    var out="";
+    function R(id){var r=document.getElementById(id).getBoundingClientRect();return{l:r.left-mr.left,r:r.right-mr.left,t:r.top-mr.top,b:r.bottom-mr.top,cx:(r.left+r.right)/2-mr.left,cy:(r.top+r.bottom)/2-mr.top}}
+    function head(x,y,dir,c){
+      var k=c?' class="loop"':'';
+      if(dir==="r")return '<polygon'+k+' points="'+x+','+y+' '+(x-8)+','+(y-4)+' '+(x-8)+','+(y+4)+'"/>';
+      if(dir==="d")return '<polygon'+k+' points="'+x+','+y+' '+(x-4)+','+(y-8)+' '+(x+4)+','+(y-8)+'"/>';
+      return '<polygon'+k+' points="'+x+','+y+' '+(x-4)+','+(y+8)+' '+(x+4)+','+(y+8)+'"/>';
+    }
+    var loopMid=null;
+    edges.forEach(function(e){
+      var a=R(e[0]),b=R(e[1]),t=e[2],c=e[3],d,h;
+      if(t==="u"){d="M"+a.cx+","+a.t+" L"+b.cx+","+(b.b+1);h=head(b.cx,b.b,"u",c)}
+      else if(t==="d"){d="M"+a.cx+","+a.b+" L"+b.cx+","+(b.t-1);h=head(b.cx,b.t,"d",c)}
+      else if(t==="rd"){d="M"+a.r+","+a.cy+" L"+b.cx+","+a.cy+" L"+b.cx+","+(b.t-1);h=head(b.cx,b.t,"d",c)}
+      else if(t==="dr"){d="M"+a.cx+","+a.b+" L"+a.cx+","+b.cy+" L"+(b.l-1)+","+b.cy;h=head(b.l,b.cy,"r",c)}
+      else if(t==="ld"){d="M"+a.l+","+a.cy+" L"+b.cx+","+a.cy+" L"+b.cx+","+(b.t-1);h=head(b.cx,b.t,"d",c);if(c)loopMid=[(a.l+b.cx)/2,a.cy]}
+      else{var mx=(a.r+b.l)/2;d="M"+a.r+","+a.cy+" L"+mx+","+a.cy+" L"+mx+","+b.cy+" L"+(b.l-1)+","+b.cy;h=head(b.l,b.cy,"r",c)}
+      out+='<path'+(c?' class="loop"':'')+' d="'+d+'"/>'+h;
+    });
+    var ga=R("no"),gb=R("p1");
+    out+='<text class="lbl" x="'+(gb.cx+10)+'" y="'+(ga.cy-6)+'">only if Gemini says Qualify</text>';
+    if(loopMid)out+='<text class="lbl" text-anchor="middle" x="'+loopMid[0]+'" y="'+(loopMid[1]-6)+'">next turn: caller replies</text>';
+    svg.innerHTML=out;
+  }
+  window.addEventListener("resize",draw);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(draw);
+  draw();
+})();
+</script>

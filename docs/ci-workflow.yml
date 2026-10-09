@@ -1,0 +1,16 @@
+name: tests
+on:
+  push:
+  pull_request:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run check
+      # Unit tests need no keys and no network: they cover the rules, routing, price filter, signatures and prompt logic.
+      - run: npm test

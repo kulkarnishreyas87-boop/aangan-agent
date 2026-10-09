@@ -1,0 +1,29 @@
+{
+  "name": "aangan-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Phone enquiry agent for Aangan Studio: Vaani voice, Gemini decisions, rules check, Neon, Resend email, HubSpot, Cal.com.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "migrate": "node --env-file=.env scripts/migrate.js",
+    "test": "node --test",
+    "check": "node scripts/check-syntax.js",
+    "e2e:mock": "node --env-file=.env scripts/e2e-mock.js",
+    "eval": "node --env-file=.env scripts/eval-transcripts.js",
+    "e2e:live": "node --env-file=.env scripts/e2e-live.js",
+    "simulate:vaani": "node --env-file=.env scripts/simulate-vaani.js",
+    "e2e:http": "node --env-file=.env scripts/e2e-http.js",
+    "e2e:concurrency": "node --env-file=.env scripts/e2e-concurrency.js",
+    "live:calcom": "node --env-file=.env scripts/e2e-calcom-live.js",
+    "live:hubspot": "node --env-file=.env scripts/e2e-hubspot-live.js",
+    "setup:hubspot": "node --env-file=.env scripts/hubspot-setup.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "ws": "^8.22.0"
+  }
+}
