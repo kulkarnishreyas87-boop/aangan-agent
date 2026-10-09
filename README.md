@@ -32,6 +32,8 @@ Node 22 or newer. The server needs a public HTTPS and WSS address, because Vaani
 
 Docs: <https://docs.vaanivoice.ai>
 
+The agent can be created with BYOL already on by `node --env-file=.env scripts/vaani-create-agent.js "<name>" wss://<host>/vaani/llm`. BYOL must be set at creation: Vaani's PATCH persona endpoint accepts the request but silently drops `brain.llm.extra_params`, and the Auth Token has no documented API field. The dashboard stores `llm_websocket_url`, `custom_llm: true` and `llm_websocket_auth_token` there.
+
 1. Create the voice agent and connect a phone number (Vaani: Set Up Telephony).
 2. Brain, Reasoning Language Model, **BYOL** tab: WebSocket URL `wss://<host>/vaani/llm`, Auth Token = `VAANI_BYOL_TOKEN`. Vaani then connects to `/vaani/llm/<call_id>` for each call.
 3. Settings, **Webhooks**: `https://<host>/vaani/webhook/<VAANI_WEBHOOK_SECRET>`. Vaani's docs describe no signature scheme, so the secret in the path is the protection: do not log it, and rotate it if it leaks.
