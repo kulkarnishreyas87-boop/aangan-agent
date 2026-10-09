@@ -174,6 +174,12 @@ export async function completeBooking(id, b) {
 }
 export const releaseBooking = (id) => q('DELETE FROM bookings WHERE id=$1 AND calcom_uid IS NULL', [id]);
 export const bookingForCall = async (callId) => (await q('SELECT * FROM bookings WHERE call_id=$1 ORDER BY id DESC LIMIT 1', [callId])).rows[0];
+export async function loadByolState(externalCallId) {
+  const row = (await q('SELECT byol_state FROM calls WHERE external_call_id=$1', [externalCallId])).rows[0];
+  const st = row?.byol_state ?? {};
+  return { askedAvailability: Boolean(st.askedAvailability), availabilityAsks: Number(st.availabilityAsks) || 0, priceDeflected: Boolean(st.priceDeflected) };
+}
+export const saveByolState = (externalCallId, st) => q('UPDATE calls SET byol_state=$2 WHERE external_call_id=$1', [externalCallId, st]);
 export const bookingByUid = async (uid) => (await q('SELECT * FROM bookings WHERE calcom_uid=$1', [uid])).rows[0];
 export const getBooking = async (id) => (await q('SELECT * FROM bookings WHERE id=$1', [id])).rows[0];
 /** Every Vaani call id we place for a booking is kept, so a late webhook for an earlier attempt is still recognised. */

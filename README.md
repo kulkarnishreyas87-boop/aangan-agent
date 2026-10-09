@@ -26,7 +26,7 @@ npm test                    # unit tests, no keys needed
 npm start                   # refuses to boot and names anything missing
 ```
 
-Node 22 or newer. The server needs a public HTTPS and WSS address, because Vaani, Cal.com and the email links call back into it.
+Node 22 or newer. The server needs a public HTTPS and WSS address, because Vaani, Cal.com and the email links call back into it (see Deploying on Vercel).
 
 ## Vaani setup (vaanivoice.ai)
 
@@ -39,6 +39,24 @@ Docs: <https://docs.vaanivoice.ai>
 5. Cal.com: webhook to `https://<host>/calcom/webhook` with the secret `CALCOM_WEBHOOK_SECRET`.
 
 Because the server writes every reply (BYOL), Vaani's own LLM and prompt are not used. The studio playbook lives in [`vaani/AGENT_PROMPT.md`](vaani/AGENT_PROMPT.md).
+
+## Deploying on Vercel
+
+Deployed at <https://aangan-agent-one.vercel.app> (Vercel project `aangan-agent`, region Singapore to sit next to Neon). `api/server.js` is the function entry point: Vercel serves WebSockets from a function that default-exports an `http.Server` with `ws` attached ([docs](https://vercel.com/docs/functions/websockets)). `vercel.json` rewrites every path to it, passing the original path as `?__p=` (restored by `src/url.js`).
+
+```bash
+npx vercel link                       # once
+node scripts/vercel-env.js            # pushes .env to Vercel production (secrets stored as sensitive); never prints values
+npx vercel deploy --prod
+node --env-file=.env scripts/remote-smoke.js https://<your-host>   # real end-to-end check of the deployment
+```
+
+Things that differ from a normal server, all handled in code:
+
+- **No background timer.** A Vercel function is frozen between requests, so a timer would freeze a half-done job. `bin/start.js` (the long-running entry for any normal host) starts the worker only when `VERCEL` is not set. On Vercel the outbox is drained by the webhook handlers (which wait up to 45 s for the work before answering) and by `GET /cron/drain`, protected by `CRON_SECRET`.
+- **Hobby plan limits.** Cron can run once a day, so `vercel.json` uses a daily schedule; a job that is cut off is retried on the next webhook or the daily run. A WebSocket closes at the function's maximum duration (300 s on Hobby, 800 s on Pro), so a phone call longer than 5 minutes loses its connection. Call state (availability asked, price line said) is saved in Neon so a reconnect resumes, but whether Vaani reconnects is not documented. On Pro set `maxDuration` to 800 and the cron to `* * * * *`.
+- **Entry-point names matter.** Vercel auto-detects files called `index.js`, `server.js` and similar as the app. The long-running entry is therefore `bin/start.js` and the router `src/http-server.js`, and `package.json` `main` points at `api/server.js`.
+- A push to `main` redeploys automatically because the repository is connected to the Vercel project.
 
 ## How a call is handled
 
@@ -76,6 +94,7 @@ Never commit `.env`; it is git-ignored. Rotate any key that has been pasted into
 | `npm run e2e:concurrency` | Neon, Gemini | Races real workers: one HubSpot deal and one Cal.com booking under parallel jobs, retry after a vendor failure, backoff, dead-lettering with an alert. 12 checks. |
 | `npm run e2e:mock` | Neon, Gemini | Full flow with stand-in Cal.com, HubSpot and Resend. 14 checks. |
 | `npm run simulate:vaani` | Neon, Gemini | A stand-in Vaani talks to the real server over a real WebSocket and webhooks, following Vaani's documented contract. 21 checks. |
+| `scripts/remote-smoke.js <url>` | all keys | A deployed server end to end with real services: WebSocket call, webhooks, Cal.com booking, HubSpot deal, background jobs, then cleanup. 12 checks. |
 | `npm run e2e:live` | all keys | The real Cal.com and HubSpot: books, creates the deal and properties, moves it to Won, then cleans up. 9 checks. |
 | `npm run live:calcom`, `live:hubspot` | keys | Individual live checks, with cleanup. |
 | `npm run eval -- <enquiries.txt> <model>` | Gemini | Scores the model on the September phone transcripts. |
@@ -102,8 +121,10 @@ src/byol.js          Vaani per-turn WebSocket
 src/vaani.js         Vaani client and webhook helpers
 src/vaani-events.js  Vaani webhooks
 src/pipeline.js      in-call decision and end-of-call finalise
+bin/start.js         long-running entry point (any normal Node host); api/server.js is the Vercel entry
 src/worker.js        outbox: email, HubSpot, scheduler, confirmation, retries and dead-lettering
-src/server.js        HTTP endpoints
+src/http-server.js   HTTP endpoints (router)
+api/server.js        Vercel entry point
 src/db.js            Neon queries, locks
 src/email.js         Resend and signed links
 src/hubspot.js       HubSpot client

@@ -12,6 +12,10 @@ import * as email from './email.js';
 import * as cal from './calcom.js';
 import { onVaaniEvent } from './vaani-events.js';
 import { attach } from './byol.js';
+import { drain } from './worker.js';
+import { background } from './background.js';
+import { safeEqual } from './vaani.js';
+import { restoreUrl } from './url.js';
 
 const MAX_BODY = 2_000_000;
 
@@ -74,6 +78,7 @@ async function leadAction(res, raw) {
   }
   await store.setOutcome(id, action);
   await store.enqueue('hubspot_sync', { callId: handoff.call_id });
+  await background(drain(), { waitMs: 20000 });
   return page(res, 200, action === 'won' ? 'Marked Won' : 'Marked Lost', '<p>Thanks. HubSpot will update shortly.</p>');
 }
 
@@ -92,6 +97,7 @@ async function onCalcom(evt) {
   const booking = (await store.bookingByUid(p.uid ?? uids[0])) ?? null;
   if (booking) await store.enqueue('hubspot_sync', { callId: booking.call_id }); // stage and consultation time follow the calendar
   await store.enqueue('email_task', { text: `Cal.com booking ${uids[0]}: ${trig}. Check the calendar.`, to: 'designers' });
+  await background(drain(), { waitMs: 20000 });
 }
 
 const routes = {
@@ -104,6 +110,14 @@ const routes = {
     await onCalcom(parseJson(raw));
     return json(res, 200, { ok: true });
   },
+  // Vercel Cron calls this every minute (vercel.json) with Authorization: Bearer $CRON_SECRET. It replaces the in-process timer,
+  // which does not exist on Vercel. It also retries any job whose backoff has expired.
+  'GET /cron/drain': async (req, res) => {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || !safeEqual(req.headers.authorization ?? '', 'Bearer ' + secret)) return json(res, 401, { error: 'unauthorized' });
+    await drain(50);
+    return json(res, 200, { ok: true, outbox: await store.outboxStats() });
+  },
   'GET /health': async (req, res) => {
     try { return json(res, 200, { ok: true, db: true, outbox: await store.outboxStats() }); }
     catch { return json(res, 503, { ok: false, db: false }); }
@@ -112,6 +126,7 @@ const routes = {
 
 export function createServer() {
   const server = http.createServer(async (req, res) => {
+    restoreUrl(req);
     const path = req.url.split('?')[0];
     try {
       if (req.method === 'POST' && path.startsWith('/vaani/webhook/')) {

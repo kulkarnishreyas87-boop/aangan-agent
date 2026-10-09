@@ -1,0 +1,22 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/server?__p=$1"
+    }
+  ],
+  "regions": [
+    "sin1"
+  ],
+  "functions": {
+    "api/server.js": {
+      "includeFiles": "{src/knowledge/**,vaani/AGENT_PROMPT.md}"
+    }
+  },
+  "crons": [
+    {
+      "path": "/cron/drain",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

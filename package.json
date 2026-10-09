@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "node --env-file=.env src/index.js",
+    "start": "node --env-file=.env bin/start.js",
     "migrate": "node --env-file=.env scripts/migrate.js",
     "test": "node --test",
     "check": "node scripts/check-syntax.js",
@@ -23,7 +23,9 @@
     "setup:hubspot": "node --env-file=.env scripts/hubspot-setup.js"
   },
   "dependencies": {
+    "@vercel/functions": "^3.9.11",
     "pg": "^8.13.0",
     "ws": "^8.22.0"
-  }
+  },
+  "main": "api/server.js"
 }

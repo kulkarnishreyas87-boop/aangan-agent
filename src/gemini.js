@@ -90,7 +90,7 @@ export async function decide({ transcript, history = '' }) {
     '- A budget that nobody mentioned is "unclear", not "fail".',
     '- extracted.project_category is a label for the kind of space, nothing more. Do not let it change your criteria scores.',
     '- Set existing_client_complaint true only when the caller is an existing client complaining about an ongoing project.',
-    '- Set asking_price true when the caller asks what it costs.',
+    '- Set asking_price true ONLY when the caller\'s most recent message asks what it costs. If they asked earlier and the conversation has moved on, set it false.',
     '- Set availability_given true only when the caller has said when they are free for a first consultation (days or times), or said any time works. Otherwise false.',
     '- next_question: ONE direct question for the first unclear criterion among real_project, service_area, timeline. Never mention any price, rate or number of rupees.',
     '- needed_by_weeks: weeks from now until the caller needs the work finished, only if they stated a date or event; otherwise null.',

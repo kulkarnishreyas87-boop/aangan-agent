@@ -10,7 +10,7 @@ Object.assign(process.env, {
 });
 const store = await import('../src/db.js');
 const email = await import('../src/email.js');
-const { createServer } = await import('../src/server.js');
+const { createServer } = await import('../src/http-server.js');
 const server = createServer();
 await new Promise((r) => server.listen(0, r));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -35,6 +35,14 @@ try {
 
   const health = await req('GET', '/health');
   check('GET /health reports the database and outbox counts', health.s === 200 && JSON.parse(health.t).db === true && typeof JSON.parse(health.t).outbox.dead === 'number', health.t);
+
+  process.env.CRON_SECRET = 'http-test-cron-secret';
+  const cronNone = await req('GET', '/cron/drain');
+  check('cron endpoint refuses a request with no secret', cronNone.s === 401);
+  const cronBad = await req('GET', '/cron/drain', undefined, { authorization: 'Bearer wrong' });
+  check('cron endpoint refuses the wrong secret', cronBad.s === 401);
+  const cronOk = await req('GET', '/cron/drain', undefined, { authorization: 'Bearer http-test-cron-secret' });
+  check('cron endpoint with the right secret drains the outbox', cronOk.s === 200 && JSON.parse(cronOk.t).ok === true, cronOk.t);
 
   const unknown = await req('GET', '/nope');
   check('unknown path returns 404', unknown.s === 404);

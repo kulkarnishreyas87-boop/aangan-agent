@@ -1,0 +1,12 @@
+test/
+scripts/
+docs/
+.github/
+README.md
+.env
+.env.*
+!.env.example
+node_modules/
+.claude/
+vaani/skill/
+.vercel

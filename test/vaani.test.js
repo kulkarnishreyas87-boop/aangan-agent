@@ -71,3 +71,37 @@ test('directive: a price question carries the approved line and no number', () =
   assert.match(d.directive, /Pricing depends on the site/);
   assert.doesNotMatch(d.directive, /₹|lakh|per sq/i);
 });
+
+test('required environment list names every service and reports what is missing', async () => {
+  const { REQUIRED_ENV, missingEnv } = await import('../src/env-check.js');
+  assert.ok(['DATABASE_URL', 'GEMINI_API_KEY', 'VAANI_BYOL_TOKEN', 'RESEND_API_KEY', 'CALCOM_API_KEY', 'HUBSPOT_ACCESS_TOKEN'].every((k) => REQUIRED_ENV.includes(k)));
+  const saved = process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+  assert.ok(missingEnv().includes('GEMINI_API_KEY'));
+  if (saved !== undefined) process.env.GEMINI_API_KEY = saved;
+});
+
+test('Vercel rewrite: the original path is restored from the __p parameter', async () => {
+  const { restoreUrl } = await import('../src/url.js');
+  const a = { url: '/api/server?__p=vaani%2Fllm%2Fabc' };
+  assert.equal(restoreUrl(a), '/vaani/llm/abc');
+  const b = { url: '/api/server?__p=lead/won&id=5&sig=xyz' };
+  assert.equal(restoreUrl(b), '/lead/won?id=5&sig=xyz');
+  const c = { url: '/health' };
+  assert.equal(restoreUrl(c), '/health', 'a normal Node host is left alone');
+  const d = { url: '/api/server' };
+  assert.equal(restoreUrl(d), '/api/server', 'no __p means nothing to restore');
+});
+
+test('directive: the price line is said once, then not repeated on later turns', () => {
+  const r = { route: 'CLARIFY', ask_about: 'timeline', question: 'When do you want it done?', reason_codes: [], deflect_price: true };
+  assert.match(directiveFor(r, { priceDeflected: false }).directive, /Pricing depends on the site/);
+  assert.doesNotMatch(directiveFor(r, { priceDeflected: true }).directive, /Pricing depends/);
+});
+
+test('directive: a caller who already gave their availability is wrapped up, not asked again', () => {
+  const r = { route: 'QUALIFY', reason_codes: [], deflect_price: false, availability_given: true };
+  const d = directiveFor(r, { askedAvailability: false });
+  assert.equal(d.endCall, true);
+  assert.doesNotMatch(d.directive, /ask when|when they are free/i);
+});

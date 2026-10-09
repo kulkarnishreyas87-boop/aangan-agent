@@ -45,7 +45,7 @@ globalThis.fetch = async (url, init = {}) => {
 };
 
 const store = await import('../src/db.js');
-const { createServer } = await import('../src/server.js');
+const { createServer } = await import('../src/http-server.js');
 const server = createServer();
 await new Promise((r) => server.listen(0, r));
 const port = server.address().port;

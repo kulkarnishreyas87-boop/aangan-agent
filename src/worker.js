@@ -173,7 +173,7 @@ export async function drain(max = 20) {
       await fn(job.payload, job);
       await store.jobDone(job.id);
     } catch (e) {
-      console.error(`[worker] ${job.kind} #${job.id} failed (attempt ${job.attempts + 1}):`, e.message);
+      console.error(`[worker] ${job.kind} #${job.id} failed (attempt ${job.attempts + 1}): ${e.name}: ${e.message} | ${String(e.stack).split('\n').slice(1, 5).map((l) => l.trim()).join(' < ')}`);
       let failed;
       try { failed = await store.jobFailed(job.id, e.message); } catch (err) { console.error('[worker] could not record failure:', err.message); }
       if (failed?.dead_at) {

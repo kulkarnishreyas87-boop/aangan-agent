@@ -1,18 +1,11 @@
-import { createServer } from './server.js';
-import { startWorker } from './worker.js';
-import { db } from './db.js';
-import { settings, opt } from './config.js';
+import { createServer } from '../src/http-server.js';
+import { startWorker } from '../src/worker.js';
+import { db } from '../src/db.js';
+import { settings, opt } from '../src/config.js';
+import { missingEnv } from '../src/env-check.js';
 
 // Fail loudly at start-up, with the names of what is missing, instead of on the first live call.
-const REQUIRED = [
-  'DATABASE_URL', 'GEMINI_API_KEY', 'GEMINI_MODEL',
-  'VAANI_WEBHOOK_SECRET', 'VAANI_BYOL_TOKEN',
-  'RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DESIGNERS', 'EMAIL_ESCALATION', 'EMAIL_FRONTDESK', 'PUBLIC_BASE_URL', 'ACTION_LINK_SECRET',
-  'CALCOM_API_KEY', 'CALCOM_EVENT_TYPE_ID_SITE_VISIT', 'CALCOM_EVENT_TYPE_ID_PHONE', 'CALCOM_SLOTS_API_VERSION', 'CALCOM_BOOKINGS_API_VERSION', 'CALCOM_WEBHOOK_SECRET',
-  'HUBSPOT_ACCESS_TOKEN', 'HUBSPOT_DEAL_TO_CONTACT_ASSOC_ID',
-  'HUBSPOT_STAGE_QUALIFIED', 'HUBSPOT_STAGE_BOOKED', 'HUBSPOT_STAGE_WON', 'HUBSPOT_STAGE_LOST', 'HUBSPOT_STAGE_DECLINED', 'HUBSPOT_STAGE_OTHER'
-];
-const missing = REQUIRED.filter((k) => !opt(k));
+const missing = missingEnv();
 if (missing.length) {
   console.error(`Missing required environment variables:\n  ${missing.join('\n  ')}\nSee .env.example.`);
   process.exit(1);
@@ -26,7 +19,9 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e?.m
 
 const server = createServer();
 server.listen(settings.port(), () => console.log(`aangan-agent listening on :${settings.port()}`));
-const worker = startWorker();
+// A background timer must never run on Vercel: the instance is frozen between requests, which would freeze a half-done job.
+// There the outbox is drained by the cron route and after each webhook instead.
+const worker = process.env.VERCEL ? null : startWorker();
 
 // Finish in-flight requests, stop the worker and close the database pool on shutdown (deploys, Ctrl+C).
 let stopping = false;
@@ -34,7 +29,7 @@ const stop = (signal) => {
   if (stopping) return;
   stopping = true;
   console.log(`${signal} received, shutting down`);
-  clearInterval(worker);
+  if (worker) clearInterval(worker);
   server.close(async () => {
     try { await db().end(); } catch { /* already closed */ }
     process.exit(0);

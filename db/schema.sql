@@ -95,3 +95,4 @@ CREATE TABLE IF NOT EXISTS confirm_calls (
   booking_id    BIGINT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE calls ADD COLUMN IF NOT EXISTS byol_state JSONB;                          -- per-call conversation state, so a dropped WebSocket can resume

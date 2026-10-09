@@ -12,6 +12,7 @@ import { decideTurn, geminiCostRows } from './pipeline.js';
 import { speak } from './gemini.js';
 import { scrubPrice, PRICE_DEFLECTION } from './rules.js';
 import * as store from './db.js';
+import { restoreUrl } from './url.js';
 
 const ENDING_ROUTES = new Set(['DECLINE', 'ESCALATE', 'LOG_ONLY']);
 const MAX_AVAILABILITY_ASKS = 2; // after this many asks we wrap up anyway and let the confirmation call sort out the time
@@ -42,7 +43,7 @@ export function directiveFor(reply, state = {}) {
       break;
     }
     case 'QUALIFY':
-      if (!state.askedAvailability) {
+      if (!state.askedAvailability && !reply.availability_given) {
         parts.push('The caller is a good fit. Thank them warmly in one short sentence, then ask when they are free for a first consultation (days and times, and who will attend). Do NOT offer or book a specific time. Say a team member will call them right after this call to confirm the time.');
       } else if (reply.availability_given || (state.availabilityAsks ?? 0) >= MAX_AVAILABILITY_ASKS) {
         parts.push('Wrap up warmly: say we will call them shortly to confirm a consultation time, thank them, and say goodbye.');
@@ -66,9 +67,10 @@ export function directiveFor(reply, state = {}) {
     default:
       parts.push('Ask one short question to understand the project.');
   }
-  if (reply.deflect_price && !endCall) {
+  const deflect = reply.deflect_price && !state.priceDeflected; // say it once, not on every later turn
+  if (deflect && !endCall) {
     parts.push(`The caller also asked about price. Say this idea first, in your own natural words and with no number: "${PRICE_DEFLECTION}"`);
-  } else if (reply.deflect_price) {
+  } else if (deflect) {
     parts.push(`The caller asked about price. Include this idea with no number: "${PRICE_DEFLECTION}"`);
   }
   return { directive: parts.join('\n'), endCall };
@@ -90,6 +92,7 @@ export function attach(httpServer) {
 
   httpServer.on('upgrade', (req, socket, head) => {
     socket.on('error', () => {});
+    restoreUrl(req);
     let callId = null;
     try {
       const m = new URL(req.url, 'http://x').pathname.match(/^\/vaani\/llm\/([^/]+)$/);
@@ -102,7 +105,7 @@ export function attach(httpServer) {
 }
 
 function onConnection(ws, callId) {
-  const state = { askedAvailability: false, availabilityAsks: 0, failures: 0, latest: 0 };
+  const state = { askedAvailability: false, availabilityAsks: 0, failures: 0, latest: 0, loaded: false };
   const send = (obj) => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj)); };
   ws.on('error', (e) => console.error(`[byol] socket error on call ${callId}:`, e.message));
 
@@ -134,6 +137,11 @@ function onConnection(ws, callId) {
 
     try {
       const externalCallId = String(msg.call_id ?? callId);
+      if (!state.loaded) {
+        // A connection can drop and reconnect (Vercel closes WebSockets at the function's maximum duration). Resume where the call was.
+        Object.assign(state, await store.loadByolState(externalCallId));
+        state.loaded = true;
+      }
       const verdict = await decideTurn({ externalCallId, transcript });
       const { directive, endCall } = directiveFor(verdict, state);
       const call = await store.upsertCall({ externalCallId });
@@ -141,11 +149,16 @@ function onConnection(ws, callId) {
       for (const c of geminiCostRows(usage)) await store.insertCost(call.id, c);
       state.failures = 0;
       const sent = reply(json.reply, endCall || ENDING_ROUTES.has(verdict.route));
+      if (sent && verdict.deflect_price && !state.priceDeflected) {
+        state.priceDeflected = true;
+        await store.saveByolState(externalCallId, { askedAvailability: state.askedAvailability, availabilityAsks: state.availabilityAsks, priceDeflected: true });
+      }
       // Only count the question as asked if the caller actually heard it.
       if (sent && verdict.route === 'QUALIFY') {
         if (state.askedAvailability) state.availabilityAsks += 1;
         else state.availabilityAsks = 1;
         state.askedAvailability = true;
+        await store.saveByolState(externalCallId, { askedAvailability: true, availabilityAsks: state.availabilityAsks, priceDeflected: Boolean(state.priceDeflected) });
       }
     } catch (e) {
       state.failures += 1;

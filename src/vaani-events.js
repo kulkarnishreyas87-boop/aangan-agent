@@ -8,6 +8,7 @@ import * as vaani from './vaani.js';
 import { finalizeCall } from './pipeline.js';
 import { judgeConfirmation } from './gemini.js';
 import { drain } from './worker.js';
+import { background } from './background.js';
 
 /**
  * Is this one of OUR confirmation calls? Known by call id (we keep every id we placed). If the webhook beat our own
@@ -45,7 +46,7 @@ export async function onVaaniEvent(body) {
       const { json } = await judgeConfirmation({ transcript: transcript ?? '' });
       if (json.outcome === 'confirmed') await store.setBookingConfirmed(confirmation.id);
       else await store.enqueue('email_task', { text: `Confirmation call for booking ${confirmation.calcom_uid}: ${json.outcome}. ${json.note}` });
-      drain().catch((err) => console.error('[drain]', err.message));
+      await background(drain(), { waitMs: 45000 });
       return { ok: 'confirmation', outcome: json.outcome };
     }
 
@@ -56,7 +57,7 @@ export async function onVaaniEvent(body) {
       durationS: e.durationS,
       transcript: transcript ?? ''
     });
-    drain().catch((err) => console.error('[drain]', err.message)); // start the outbox straight away
+    await background(drain(), { waitMs: 45000 }); // run the outbox before answering (see background.js)
     return { ok: 'finalized', ...result };
   }
 
