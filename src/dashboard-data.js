@@ -42,14 +42,16 @@ export async function dashboardData(opts = {}) {
   const open = Boolean(opts.open);
   const [totals, daily, routes, reasons, recent, upcoming, usage, outcomes, live] = await Promise.all([
     q(`SELECT count(*)::int AS total,
+        count(*) FILTER (WHERE finalized_at IS NOT NULL)::int AS finished,
         count(*) FILTER (WHERE created_at > now() - interval '24 hours')::int AS last_24h,
-        count(*) FILTER (WHERE route='QUALIFY')::int AS qualified,
-        count(*) FILTER (WHERE route='DECLINE')::int AS declined,
-        count(*) FILTER (WHERE route='ESCALATE')::int AS escalated,
-        count(*) FILTER (WHERE route='LOG_ONLY')::int AS log_only,
-        COALESCE(round(avg(duration_s))::int, 0) AS avg_duration_s,
-        COALESCE(round(avg(EXTRACT(EPOCH FROM (answered_at - started_at))))::int, 0) AS avg_answer_s
-      FROM calls WHERE finalized_at IS NOT NULL`),
+        count(*) FILTER (WHERE created_at >= (now() AT TIME ZONE '${TZ}')::date AT TIME ZONE '${TZ}')::int AS today,
+        count(*) FILTER (WHERE route='QUALIFY' AND finalized_at IS NOT NULL)::int AS qualified,
+        count(*) FILTER (WHERE route='DECLINE' AND finalized_at IS NOT NULL)::int AS declined,
+        count(*) FILTER (WHERE route='ESCALATE' AND finalized_at IS NOT NULL)::int AS escalated,
+        count(*) FILTER (WHERE route='LOG_ONLY' AND finalized_at IS NOT NULL)::int AS log_only,
+        COALESCE(round(avg(duration_s) FILTER (WHERE finalized_at IS NOT NULL))::int, 0) AS avg_duration_s,
+        COALESCE(round(avg(EXTRACT(EPOCH FROM (answered_at - started_at))) FILTER (WHERE finalized_at IS NOT NULL))::int, 0) AS avg_answer_s
+      FROM calls`),
     q(`SELECT to_char(d::date, 'YYYY-MM-DD') AS day,
         count(c.id) FILTER (WHERE c.route='QUALIFY')::int AS qualified,
         count(c.id) FILTER (WHERE c.route='DECLINE')::int AS declined,
@@ -89,8 +91,8 @@ export async function dashboardData(opts = {}) {
     open,
     live: live.rows[0].n,
     kpis: {
-      total: t.total, last24h: t.last_24h, qualified: t.qualified, declined: t.declined, escalated: t.escalated, logOnly: t.log_only,
-      qualifiedRate: t.total ? Math.round((t.qualified / t.total) * 100) : 0,
+      total: t.total, finished: t.finished, today: t.today, last24h: t.last_24h, qualified: t.qualified, declined: t.declined, escalated: t.escalated, logOnly: t.log_only,
+      qualifiedRate: t.finished ? Math.round((t.qualified / t.finished) * 100) : 0,
       booked: o.booked, confirmed: o.confirmed, won: o.won, lost: o.lost,
       avgDurationS: t.avg_duration_s, avgAnswerS: t.avg_answer_s
     },

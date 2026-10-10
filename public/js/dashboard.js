@@ -94,12 +94,12 @@
     const k = d.kpis;
     const h = new Date().getHours();
     $('#greeting').textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ', team';
-    C.count($('#b24'), k.last24h); C.count($('#bRate'), k.qualifiedRate, { suffix: '%' });
-    $('#bDur').textContent = k.total ? mmss(k.avgDurationS) : '–';
+    C.count($('#bTotal'), k.total); C.count($('#bToday'), k.today || 0); C.count($('#b24'), k.last24h); C.count($('#bRate'), k.qualifiedRate, { suffix: '%' });
+    $('#bDur').textContent = k.finished ? mmss(k.avgDurationS) : '–';
     $('#liveBanner').textContent = d.live ? d.live + (d.live === 1 ? ' call in progress' : ' calls in progress') : 'Agent is live';
     $('#liveText').textContent = d.live ? d.live + ' on a call' : 'Live';
     $('#bannerSub').textContent = k.total
-      ? k.qualified + ' of ' + k.total + ' calls became qualified leads' + (k.booked ? ', and ' + k.booked + ' consultation' + (k.booked > 1 ? 's are' : ' is') + ' booked.' : '.')
+      ? k.total + (k.total === 1 ? ' call handled' : ' calls handled') + ', ' + k.qualified + ' qualified as leads' + (k.booked ? ', and ' + k.booked + ' consultation' + (k.booked > 1 ? 's are' : ' is') + ' booked.' : '.')
       : 'No calls yet. Place a test call, or tap "Preview with sample data" to see the dashboard in action.';
     renderKpis(d); renderCharts(d); renderFunnel(d); renderFeed(d); renderCons(d); renderSystem(d);
     state.firstLoad = false;
@@ -232,7 +232,7 @@
     const upcoming = recent.filter((r) => r.booking).map((r, i) => ({ id: i, start: r.booking.start, type: r.booking.type, name: r.name, area: r.area, confirmed: r.booking.confirmed })).sort((a, b) => new Date(a.start) - new Date(b.start));
     return {
       generatedAt: new Date().toISOString(), live: 1,
-      kpis: { total: T, last24h: 7, qualified: Q, declined: D, escalated: 2, logOnly: 3, qualifiedRate: Math.round((Q / T) * 100), booked: 17, confirmed: 12, won: 5, lost: 2, avgDurationS: 214, avgAnswerS: 0 },
+      kpis: { total: T, finished: T, today: 4, last24h: 7, qualified: Q, declined: D, escalated: 2, logOnly: 3, qualifiedRate: Math.round((Q / T) * 100), booked: 17, confirmed: 12, won: 5, lost: 2, avgDurationS: 214, avgAnswerS: 0 },
       daily, routes: [{ route: 'QUALIFY', n: Q }, { route: 'DECLINE', n: D }, { route: 'CLARIFY', n: O - 5 }, { route: 'ESCALATE', n: 2 }, { route: 'LOG_ONLY', n: 3 }], // adds up to the total
       declineReasons: [{ code: 'service_area', n: 7 }, { code: 'timeline', n: 5 }, { code: 'real_project', n: 4 }, { code: 'budget', n: 3 }],
       recent, upcoming, usage: { tokensIn: 482300, tokensOut: 61250, costInr: null, callsCosted: T },
