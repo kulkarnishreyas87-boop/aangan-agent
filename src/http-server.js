@@ -172,7 +172,11 @@ export function createServer() {
       if (req.method === 'POST' && path.startsWith('/vaani/webhook/')) {
         let secret = '';
         try { secret = decodeURIComponent(path.slice('/vaani/webhook/'.length)); } catch { /* bad escape: falls through to 404 */ }
-        if (!vaani.verifyPathSecret(secret)) return json(res, 404, { error: 'not found' });
+        if (!vaani.verifyPathSecret(secret)) {
+          // Diagnostic for a mis-saved webhook URL. Lengths and header NAMES only, never the secret or header values.
+          console.error(`[vaani webhook refused] secret segment is ${secret.length} chars (expected ${String(process.env.VAANI_WEBHOOK_SECRET ?? '').length}), query ${req.url.includes('?') ? 'present' : 'absent'}, headers: ${Object.keys(req.headers).join(',')}`);
+          return json(res, 404, { error: 'not found' });
+        }
         return json(res, 200, await onVaaniEvent(parseJson(await readBody(req))));
       }
       const key = `${req.method} ${path}`;

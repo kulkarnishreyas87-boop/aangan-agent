@@ -77,6 +77,9 @@ const declineNote = (codes) => `Declined. Reason: ${codes.join(', ') || 'not a f
 export async function finalizeCall(p) {
   const call = await store.upsertCall(p);
   if (call.finalized_at) return { duplicate: true, callId: call.id };
+  // Vaani's webhook may carry no duration (or not arrive). Our voice link was open for the call, so its own timestamps are the fallback.
+  const measured = call.started_at && call.updated_at ? Math.max(1, Math.round((new Date(call.updated_at) - new Date(call.started_at)) / 1000)) : null;
+  const durationS = p.durationS ?? measured;
 
   // Heuristic, not a vendor fact: a transcript this short means the caller dropped before saying anything useful.
   const tooShort = p.transcript.trim().length < settings.minTranscriptChars();
@@ -106,9 +109,9 @@ export async function finalizeCall(p) {
     }
   }
 
-  if (p.durationS != null) {
+  if (durationS != null) {
     const rate = settings.rate.voicePerMinute();
-    costs.push({ provider: 'voice', unitType: 'call_seconds', units: p.durationS, amountInr: rate == null ? null : (p.durationS / 60) * rate });
+    costs.push({ provider: 'voice', unitType: 'call_seconds', units: durationS, amountInr: rate == null ? null : (durationS / 60) * rate });
   }
 
   const jobs = [{ kind: 'hubspot_sync', payload: { callId: call.id } }];
@@ -123,7 +126,7 @@ export async function finalizeCall(p) {
 
   await store.finalizeCall(
     call.id,
-    { endedAt: p.endedAt ?? new Date(), durationS: p.durationS, transcript: p.transcript, decision, route: verdict.route, reasonCodes: verdict.reasonCodes, note },
+    { endedAt: p.endedAt ?? new Date(), durationS, transcript: p.transcript, decision, route: verdict.route, reasonCodes: verdict.reasonCodes, note },
     costs,
     jobs
   );

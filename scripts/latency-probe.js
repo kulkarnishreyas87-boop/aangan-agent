@@ -3,6 +3,7 @@
 import { WebSocket } from 'ws';
 import pg from 'pg';
 const base = (process.argv[2] ?? 'https://aangan-agent-one.vercel.app').replace(/\/$/, '');
+const t0 = performance.now();
 const callId = 'latency-probe-' + Date.now();
 const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/vaani/llm/${callId}`, { headers: { Authorization: `Bearer ${process.env.VAANI_BYOL_TOKEN}` } });
 const lines = ['Hello, I want to redo my two BHK.', 'It is near Kothrud.', 'We want it finished by March.', 'My wife and I decide together.'];
@@ -28,7 +29,9 @@ ws.on('error', (e) => console.log('socket error', e.message));
 ws.on('close', async () => {
   console.log('average', Math.round(times.reduce((a, b) => a + b, 0) / (times.length || 1)), 'ms');
   const c = new pg.Client({ connectionString: process.env.DATABASE_URL }); await c.connect();
-  const r = await c.query('SELECT id FROM calls WHERE external_call_id=$1', [callId]);
+  await new Promise((res) => setTimeout(res, 1500)); // the server records the close a moment after the socket ends
+  const r = await c.query('SELECT id, round(EXTRACT(EPOCH FROM (updated_at - started_at)))::int AS measured_s FROM calls WHERE external_call_id=$1', [callId]);
+  console.log('call length measured by the server:', r.rows[0]?.measured_s ?? 'no row', 's (probe ran', Math.round((performance.now() - t0) / 1000), 's)');
   for (const x of r.rows) { for (const t of ['costs', 'sync_log', 'handoffs', 'bookings']) await c.query(`DELETE FROM ${t} WHERE call_id=$1`, [x.id]); await c.query('DELETE FROM calls WHERE id=$1', [x.id]); }
   await c.end();
 });

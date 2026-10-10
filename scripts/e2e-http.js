@@ -81,10 +81,11 @@ try {
   check('open view shows the caller, note and a parsed transcript', mine?.name === 'Priya Sharma' && mine.note === 'PRIVATE-NOTE-9f3a' && Array.isArray(mine.transcript) && mine.transcript.length >= 2 && mine.transcript[0].who === 'agent' && mine.transcript[1].who === 'caller', JSON.stringify(mine?.transcript));
   check('open view still masks the phone number', mine && !/\d{6,}/.test(mine.phone), mine && mine.phone);
   // ---- sweeper: a call that went quiet without its end-of-call webhook is finalised from the live transcript ----
-  const stale = await q("INSERT INTO calls (external_call_id, transcript, updated_at) VALUES ($1,$2, now() - interval '10 minutes') RETURNING id", ['sweep-' + Date.now(), 'AGENT: Hello\nUSER: hi']);
+  const stale = await q("INSERT INTO calls (external_call_id, transcript, started_at, updated_at) VALUES ($1,$2, now() - interval '12 minutes', now() - interval '10 minutes') RETURNING id", ['sweep-' + Date.now(), 'AGENT: Hello\nUSER: hi']);
   const { sweepStaleCalls } = await import('../src/vaani-events.js');
   const swept = await sweepStaleCalls({ quietMinutes: 3 });
-  const sweptRow = (await q('SELECT finalized_at, route FROM calls WHERE id=$1', [stale.rows[0].id])).rows[0];
+  const sweptRow = (await q('SELECT finalized_at, route, duration_s FROM calls WHERE id=$1', [stale.rows[0].id])).rows[0];
+  check('call length is measured from the voice link when Vaani sends none', Math.abs(sweptRow.duration_s - 120) <= 2, 'duration_s=' + sweptRow.duration_s);
   check('a quiet call with no webhook is finalised by the sweeper', swept.some((x) => x.callId == stale.rows[0].id) && sweptRow.finalized_at && sweptRow.route, JSON.stringify(sweptRow));
   for (const t of ['costs', 'sync_log', 'handoffs', 'bookings']) await q(`DELETE FROM ${t} WHERE call_id=$1`, [stale.rows[0].id]);
   await q('DELETE FROM outbox WHERE payload::text LIKE $1', ['%' + stale.rows[0].id + '%']);

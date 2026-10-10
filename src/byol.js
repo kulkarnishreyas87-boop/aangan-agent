@@ -112,9 +112,12 @@ export function attach(httpServer) {
 }
 
 function onConnection(ws, callId) {
-  const state = { askedAvailability: false, availabilityAsks: 0, failures: 0, latest: 0, loaded: false };
+  const state = { askedAvailability: false, availabilityAsks: 0, failures: 0, latest: 0, loaded: false, connectedAt: new Date(), externalCallId: null };
   const send = (obj) => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj)); };
   ws.on('error', (e) => console.error(`[byol] socket error on call ${callId}:`, e.message));
+  // The voice link is open for the length of the call, so its open and close times are our own measure of call duration. They do not
+  // depend on Vaani's webhook. Closing marks the last moment of the call; the sweeper or the webhook then finalises it.
+  ws.on('close', () => { if (state.externalCallId) store.touchCall(state.externalCallId).catch((e) => console.error('[byol] could not record call end:', e.message)); });
 
   // Handshake frames, in this order. Vaani ignores their content.
   send({ interaction_type: 'config' });
@@ -149,7 +152,8 @@ function onConnection(ws, callId) {
         Object.assign(state, await store.loadByolState(externalCallId));
         state.loaded = true;
       }
-      const ev = await evaluateTurn({ externalCallId, transcript });
+      state.externalCallId = externalCallId;
+      const ev = await evaluateTurn({ externalCallId, transcript, startedAt: state.connectedAt, answeredAt: state.connectedAt });
       const verdict = toVaaniReply({ ...ev.verdict, question: ev.json.next_question, availabilityGiven: ev.json.availability_given });
       const { directive, endCall } = directiveFor(verdict, state);
       // The caller is waiting: save this turn while the reply is being written, not before it. The next turn waits for the save (chain).
