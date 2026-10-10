@@ -1,0 +1,17 @@
+# Keeps the phone agent's opening line right for the time of day ("Good morning" / "Good afternoon" / "Good evening").
+# Vaani stores the greeting as fixed text, so the server rewrites it when the part of the day changes (see src/greeting.js).
+# The endpoint only ever writes the correct greeting and does nothing when it is already right, so it needs no secret.
+name: Greeting by time of day
+on:
+  schedule:
+    - cron: '35 23 * * *'   # 05:05 IST  morning
+    - cron: '35 6 * * *'    # 12:05 IST  afternoon
+    - cron: '35 11 * * *'   # 17:05 IST  evening
+    - cron: '35 19 * * *'   # 01:05 IST  night
+    - cron: '17 * * * *'    # hourly safety net
+  workflow_dispatch:
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl --fail --silent --show-error --max-time 30 --retry 2 https://aangan-agent-one.vercel.app/cron/greeting

@@ -42,7 +42,9 @@ export function directiveFor(reply, state = {}) {
   switch (reply.route) {
     case 'CLARIFY': {
       const q = reply.question || (TOPIC[reply.ask_about] ? `Ask ${TOPIC[reply.ask_about]}.` : 'Ask one short question to understand the project.');
-      parts.push(`Ask exactly one question, nothing more: "${q}" Rephrase it naturally. Then stop and wait for the answer.`);
+      parts.push(reply.caller_question
+        ? `The caller asked you something. Answer it first, in one or two short sentences, using only the studio facts you were given (never a price or a number of rupees; if you do not know, say a designer will cover it at the consultation). Then ask exactly one question: "${q}" Rephrase it naturally. Then stop and wait for the answer.`
+        : `Ask exactly one question, nothing more: "${q}" Rephrase it naturally. Then stop and wait for the answer.`);
       break;
     }
     case 'QUALIFY':
@@ -70,6 +72,9 @@ export function directiveFor(reply, state = {}) {
     default:
       parts.push('Ask one short question to understand the project.');
   }
+  if (reply.caller_question && reply.route !== 'CLARIFY' && !endCall) {
+    parts.push('The caller also asked you something. Answer it first in one or two short sentences, using only the studio facts you were given (never a price), then do the rest of the above.');
+  }
   const deflect = reply.deflect_price && !state.priceDeflected; // say it once, not on every later turn
   if (deflect && !endCall) {
     parts.push(`The caller also asked about price. Say this idea first, in your own natural words and with no number: "${PRICE_DEFLECTION}"`);
@@ -82,7 +87,8 @@ export function directiveFor(reply, state = {}) {
 /** A turn that only asks the next question, with no price to deflect: the decision call's own wording can be spoken as it is. */
 export function isPlainQuestion(verdict, state = {}) {
   const deflecting = verdict.deflect_price && !state.priceDeflected;
-  return verdict.route === 'CLARIFY' && !deflecting && Boolean(verdict.question && verdict.question.trim());
+  // A caller who asked the studio something gets a real answer from the full persona model, never just the next question.
+  return verdict.route === 'CLARIFY' && !deflecting && !verdict.caller_question && Boolean(verdict.question && verdict.question.trim());
 }
 
 const GOODBYE_AGAIN = 'Thank you for calling Aangan Studio. Goodbye.';
@@ -169,7 +175,7 @@ function onConnection(ws, callId) {
       }
       state.externalCallId = externalCallId;
       const ev = await evaluateTurn({ externalCallId, transcript, startedAt: state.connectedAt, answeredAt: state.connectedAt });
-      const verdict = toVaaniReply({ ...ev.verdict, question: ev.json.next_question, availabilityGiven: ev.json.availability_given });
+      const verdict = toVaaniReply({ ...ev.verdict, question: ev.json.next_question, availabilityGiven: ev.json.availability_given, callerQuestion: ev.json.caller_question });
       const { directive, endCall } = directiveFor(verdict, state);
       // The caller is waiting: save this turn while the reply is being written, not before it. The next turn waits for the save (chain).
       const saved = persistTurn(ev);

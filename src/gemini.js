@@ -5,7 +5,19 @@ import { readFile } from 'node:fs/promises';
 import { need } from './config.js';
 import { containsPriceFigure } from './rules.js';
 
-const QUALIFIED_MD = new URL('./knowledge/qualified.md', import.meta.url);
+/**
+ * Time of day in the studio's time zone. The phone agent's opening line is fixed text in Vaani, so greetings that come from us
+ * must follow the clock, not the persona prompt's "Good morning".
+ */
+export function timeOfDay(now = new Date(), timeZone = process.env.STUDIO_TIME_ZONE ?? 'Asia/Kolkata') {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone }).format(now));
+  const clock = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone }).format(now);
+  const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 17 ? 'Good afternoon' : hour >= 17 || hour < 1 ? 'Good evening' : 'Hello';
+  const part = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : hour >= 17 && hour < 21 ? 'evening' : 'night';
+  return { hour, clock, greeting, part, label: `${clock}, ${part}` };
+}
+
+const QUALIFIED_MD =new URL('./knowledge/qualified.md', import.meta.url);
 let rubricCache;
 async function rubric() {
   rubricCache ??= await readFile(QUALIFIED_MD, 'utf8');
@@ -70,11 +82,12 @@ const DECISION_SCHEMA = {
     existing_client_complaint: { type: 'BOOLEAN' },
     asking_price: { type: 'BOOLEAN' },
     availability_given: { type: 'BOOLEAN' },
+    caller_question: { type: 'BOOLEAN' },
     call_complete: { type: 'BOOLEAN' },
     next_question: { type: 'STRING', nullable: true },
     summary: { type: 'STRING' }
   },
-  required: ['criteria', 'extracted', 'existing_client_complaint', 'asking_price', 'availability_given', 'call_complete', 'summary']
+  required: ['criteria', 'extracted', 'existing_client_complaint', 'asking_price', 'availability_given', 'caller_question', 'call_complete', 'summary']
 };
 
 /**
@@ -103,9 +116,10 @@ export async function decide({ transcript, history = '', lite = false }) {
     '- extracted.project_category is a label for the kind of space, nothing more. Do not let it change your criteria scores.',
     '- Set existing_client_complaint true only when the caller is an existing client complaining about an ongoing project.',
     '- Set asking_price true ONLY when the caller\'s most recent message asks what it costs. If they asked earlier and the conversation has moved on, set it false.',
+    "- Set caller_question true when the caller's most recent message asks the studio something it should answer (what it does, how it works, how long things take, where it works, whether it can help with something), other than price. False for greetings, \"are you there?\", filler, and plain answers to our questions.",
     '- Set availability_given true only when the caller has said when they are free for a first consultation (days or times), or said any time works. Otherwise false.',
     lite
-      ? "- next_question: the exact words the phone agent says next, in the caller's language: a brief warm acknowledgment of what they just said (a few words, no promises), then ONE short question for the first unclear criterion among real_project, service_area, timeline. At most two short sentences. Never mention any price, rate or number of rupees."
+      ? "- next_question: the exact words the phone agent says next, in the caller's language: a brief warm acknowledgment of what they just said (a few words, no promises), then ONE short question for the first unclear criterion among real_project, service_area, timeline. At most two short sentences. Never mention any price, rate or number of rupees. This is mid-call: do not say good morning, good afternoon, good evening or good night." + ` (It is ${timeOfDay().label} in India now; only if the caller greets you first, you may return that greeting.)`
       : '- next_question: ONE direct question for the first unclear criterion among real_project, service_area, timeline. Never mention any price, rate or number of rupees.',
     '- needed_by_weeks: weeks from now until the caller needs the work finished, only if they stated a date or event; otherwise null.',
     '- Do not include the caller\'s phone number anywhere.',
@@ -182,7 +196,11 @@ export async function speak({ transcript, directive }) {
   const user =
     `Conversation so far:\n${transcript}\n\nSYSTEM DIRECTIVE (follow it exactly):\n${directive}\n\n` +
     'Write only what the agent says next: one to three short spoken sentences, in the caller\'s language.';
-  return generate({ system: await agentPrompt(), user, schema: SPEAK_SCHEMA });
+  const t = timeOfDay();
+  const clock =
+    `\n\nCURRENT TIME (overrides any greeting in the playbook): it is ${t.clock} in India, so the right greeting now is "${t.greeting}". ` +
+    'The call has already been opened with a greeting, so do NOT greet again unless the caller greets you first, and never say "Good morning" unless that is the right greeting now.';
+  return generate({ system: (await agentPrompt()) + clock, user, schema: SPEAK_SCHEMA });
 }
 
 const CONFIRM_SCHEMA = {

@@ -11,6 +11,7 @@ import * as store from './db.js';
 import * as email from './email.js';
 import * as cal from './calcom.js';
 import { onVaaniEvent, sweepStaleCalls } from './vaani-events.js';
+import { syncGreeting } from './greeting.js';
 import { attach } from './byol.js';
 import { drain } from './worker.js';
 import { background } from './background.js';
@@ -115,10 +116,16 @@ const routes = {
   },
   // Vercel Cron calls this every minute (vercel.json) with Authorization: Bearer $CRON_SECRET. It replaces the in-process timer,
   // which does not exist on Vercel. It also retries any job whose backoff has expired.
+  // Keeps the agent's opening line right for the time of day. Harmless to call by anyone: it only ever writes the correct greeting,
+  // and only when the current one is wrong (so it needs no secret and a scheduler or a pinger can call it).
+  'GET /cron/greeting': async (req, res) => {
+    try { return json(res, 200, await syncGreeting({ minGapMs: 30000 })); } catch (e) { console.error('[greeting]', e.message); return json(res, 502, { error: 'could not reach Vaani' }); }
+  },
   'GET /cron/drain': async (req, res) => {
     const secret = process.env.CRON_SECRET;
     if (!secret || !safeEqual(req.headers.authorization ?? '', 'Bearer ' + secret)) return json(res, 401, { error: 'unauthorized' });
     await sweepStaleCalls();
+    await syncGreeting().catch((e) => console.error('[greeting]', e.message));
     await drain(50);
     return json(res, 200, { ok: true, outbox: await store.outboxStats() });
   },
@@ -150,6 +157,7 @@ const routes = {
     res.setHeader('cache-control', 'no-store');
     // No DASHBOARD_PASSWORD means an open dashboard (redacted). With a password, a valid login is required and nothing is redacted.
     if (auth.dashboardEnabled() && !auth.isAuthed(req)) return json(res, 401, { error: 'login required' });
+    background(syncGreeting({ minGapMs: 10 * 60000 }).catch((e) => console.error('[greeting]', e.message)), { waitMs: 0 });
     background(sweepStaleCalls(), { waitMs: 0 }); // finalises a call whose end-of-call webhook never came
     return json(res, 200, await dashboardData({ open: !auth.dashboardEnabled() }));
   },

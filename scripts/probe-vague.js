@@ -5,7 +5,7 @@ import pg from 'pg';
 const base = (process.argv[2] ?? 'https://aangan-agent-one.vercel.app').replace(/\/$/, '');
 const callId = 'vague-probe-' + Date.now();
 const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/vaani/llm/${callId}`, { headers: { Authorization: `Bearer ${process.env.VAANI_BYOL_TOKEN}` } });
-const lines = ["No, I don't need any help.", 'Okay.', "This doesn't make any sense.", 'Yeah, I know.'];
+const lines = process.env.LINES ? JSON.parse(process.env.LINES) : ["No, I don't need any help.", 'Okay.', "This doesn't make any sense.", 'Yeah, I know.'];
 const transcript = []; let turn = 0; const replies = [];
 const next = () => { if (turn >= lines.length) { ws.close(); return; } transcript.push({ role: 'user', content: lines[turn] }); turn++; ws.send(JSON.stringify({ interaction_type: 'response_required', response_id: turn, call_id: callId, transcript })); };
 ws.on('message', (raw) => {

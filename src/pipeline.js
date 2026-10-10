@@ -26,6 +26,7 @@ export function toVaaniReply(d) {
     flags: d.flags,
     deflect_price: d.deflectPrice,
     availability_given: Boolean(d.availabilityGiven),
+    caller_question: Boolean(d.callerQuestion),
     price_line: d.deflectPrice ? PRICE_DEFLECTION : null,
     next: ''
   };
@@ -69,7 +70,7 @@ export async function decideTurn(p) {
   const ev = await evaluateTurn(p);
   await persistTurn(ev);
   const { json, verdict } = ev;
-  return toVaaniReply({ ...verdict, question: json.next_question, availabilityGiven: json.availability_given });
+  return toVaaniReply({ ...verdict, question: json.next_question, availabilityGiven: json.availability_given, callerQuestion: json.caller_question });
 }
 
 const declineNote = (codes) => `Declined. Reason: ${codes.join(', ') || 'not a fit'}.`;
