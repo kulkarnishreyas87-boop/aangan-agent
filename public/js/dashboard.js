@@ -9,6 +9,8 @@
     QUALIFY: { label: 'Qualified', color: '#10b981' }, CLARIFY: { label: 'In conversation', color: '#38bdf8' },
     DECLINE: { label: 'Declined', color: '#f43f5e' }, ESCALATE: { label: 'Escalated', color: '#f59e0b' }, LOG_ONLY: { label: 'Follow-up needed', color: '#a78bfa' }
   };
+  const CRIT = { real_project: 'Real project', service_area: 'Service area', timeline: 'Timeline', budget: 'Budget', decision_maker: 'Decision maker' };
+  const openIds = new Set();   // calls the viewer expanded; kept across the 10 s refresh
   const REASONS = {
     service_area: 'Outside Pune and PCMC', real_project: 'Advice only or out of scope', timeline: 'Timeline too short', budget: 'Budget mismatch',
     decision_maker: 'Decision maker missing', dropped_call: 'Call dropped', unresolved_at_hangup: 'Unresolved at hang-up'
@@ -158,7 +160,7 @@
     state.lastTopId = topId;
     d.recent.forEach((c, i) => {
       const r = c.done ? (ROUTES[c.route] ? c.route : 'LOG_ONLY') : 'CLARIFY';
-      const row = el('div', 'call' + (fresh && i === 0 ? ' fresh' : '')); row.style.animationDelay = i * 50 + 'ms'; row.tabIndex = 0; row.setAttribute('role', 'button');
+      const row = el('div', 'call' + (fresh && i === 0 ? ' fresh' : '') + (openIds.has(c.id) ? ' open' : '')); row.style.animationDelay = i * 50 + 'ms'; row.tabIndex = 0; row.setAttribute('role', 'button');
       const top = el('div', 'call-top'); top.append(el('span', 'who', c.name || c.phone));
       const tag = el('span', 'tag t-' + r, c.done ? (ROUTES[c.route] || { label: c.route || 'Done' }).label : 'In conversation'); top.append(tag);
       if (c.booking) top.append(el('span', 'tag t-CLARIFY', '🗓️ ' + (c.booking.confirmed ? 'Confirmed' : 'Booked')));
@@ -166,11 +168,22 @@
       top.append(el('span', 'when', ago(c.at))); row.append(top);
       row.append(el('div', 'call-sub', [c.area, c.summary, c.name ? c.phone : null].filter(Boolean).join(' · ') || 'Details appear when the call ends'));
       const more = el('div', 'call-more');
+      if (c.aiSummary) more.append(el('p', 'ai-sum', '✨ ' + c.aiSummary));
       if (c.note) more.append(el('p', null, c.note));
+      if (c.criteria && c.criteria.length) {
+        const cr = el('div', 'crit');
+        c.criteria.forEach((k) => { const t = el('span', 'crit-i s-' + k.status, (k.status === 'pass' ? '✓ ' : k.status === 'fail' ? '✗ ' : '? ') + (CRIT[k.key] || k.key)); t.title = k.evidence || ''; cr.append(t); });
+        more.append(cr);
+      }
+      if (c.transcript && c.transcript.length) {
+        const tr = el('div', 'tr'); tr.append(el('div', 'tr-h', '💬 Transcript (' + c.transcript.length + ' lines)'));
+        c.transcript.forEach((m) => tr.append(el('div', 'tr-m ' + m.who, m.text)));
+        more.append(tr);
+      }
       if (c.reasons && c.reasons.length) more.append(el('p', null, 'Reasons: ' + c.reasons.map((x) => REASONS[x] || x).join(', ')));
       const meta = el('div'); [c.durationS ? '⏱ ' + mmss(c.durationS) : null, c.inHubspot ? '🔗 In HubSpot' : null, c.booking ? '🗓️ ' + dayParts(c.booking.start).day + ' ' + dayParts(c.booking.start).mon + ', ' + dayParts(c.booking.start).time : null].filter(Boolean).forEach((t) => meta.append(el('span', 'mini', t)));
       more.append(meta); row.append(more);
-      const toggle = () => row.classList.toggle('open'); row.addEventListener('click', toggle); row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+      const toggle = () => { row.classList.toggle('open'); if (row.classList.contains('open')) openIds.add(c.id); else openIds.delete(c.id); }; row.addEventListener('click', toggle); row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
       feed.append(row);
     });
   }

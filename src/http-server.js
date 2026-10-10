@@ -10,7 +10,7 @@ import * as vaani from './vaani.js';
 import * as store from './db.js';
 import * as email from './email.js';
 import * as cal from './calcom.js';
-import { onVaaniEvent } from './vaani-events.js';
+import { onVaaniEvent, sweepStaleCalls } from './vaani-events.js';
 import { attach } from './byol.js';
 import { drain } from './worker.js';
 import { background } from './background.js';
@@ -118,6 +118,7 @@ const routes = {
   'GET /cron/drain': async (req, res) => {
     const secret = process.env.CRON_SECRET;
     if (!secret || !safeEqual(req.headers.authorization ?? '', 'Bearer ' + secret)) return json(res, 401, { error: 'unauthorized' });
+    await sweepStaleCalls();
     await drain(50);
     return json(res, 200, { ok: true, outbox: await store.outboxStats() });
   },
@@ -149,6 +150,7 @@ const routes = {
     res.setHeader('cache-control', 'no-store');
     // No DASHBOARD_PASSWORD means an open dashboard (redacted). With a password, a valid login is required and nothing is redacted.
     if (auth.dashboardEnabled() && !auth.isAuthed(req)) return json(res, 401, { error: 'login required' });
+    background(sweepStaleCalls(), { waitMs: 0 }); // finalises a call whose end-of-call webhook never came
     return json(res, 200, await dashboardData({ open: !auth.dashboardEnabled() }));
   },
   'GET /api/public-stats': async (req, res) => {

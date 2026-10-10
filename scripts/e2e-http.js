@@ -70,7 +70,7 @@ try {
   let locked = 0; for (let i = 0; i < 8; i++) { const r = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '6.6.6.6' }, body: JSON.stringify({ password: 'nope' + i }) }); if (r.status === 429) locked++; }
   check('repeated wrong passwords from one address are locked out', locked >= 1, locked + ' of 8 refused with 429');
   // ---- open mode: no DASHBOARD_PASSWORD means no login, but customers' full names and notes stay hidden ----
-  await q("UPDATE calls SET finalized_at=now(), route='QUALIFY', handoff_note='PRIVATE-NOTE-9f3a', decision=$2 WHERE id=$1", [callId, { extracted: { name: 'Priya Sharma', area: 'Kothrud' } }]);
+  await q("UPDATE calls SET finalized_at=now(), route='QUALIFY', handoff_note='PRIVATE-NOTE-9f3a', transcript=$3, decision=$2 WHERE id=$1", [callId, { extracted: { name: 'Priya Sharma', area: 'Kothrud' } }, 'AGENT: Good morning, Aangan Studio.\nUSER: Hi, I need a 3BHK done.']);
   const savedPw = process.env.DASHBOARD_PASSWORD; delete process.env.DASHBOARD_PASSWORD;
   const me = JSON.parse((await req('GET', '/api/me')).t);
   check('without a password the dashboard reports itself as open', me.enabled === false);
@@ -78,8 +78,17 @@ try {
   const oj = open.s === 200 ? JSON.parse(open.t) : {};
   check('an open dashboard needs no login', open.s === 200 && oj.open === true, 'HTTP ' + open.s);
   const mine = (oj.recent ?? []).find((r) => r.id === callId);
-  check('open view shows only the first name', mine?.name === 'Priya' && !/Sharma/.test(open.t), mine && mine.name);
-  check('open view leaves out the handoff notes', mine && mine.note === null && !/PRIVATE-NOTE-9f3a/.test(open.t));
+  check('open view shows the caller, note and a parsed transcript', mine?.name === 'Priya Sharma' && mine.note === 'PRIVATE-NOTE-9f3a' && Array.isArray(mine.transcript) && mine.transcript.length >= 2 && mine.transcript[0].who === 'agent' && mine.transcript[1].who === 'caller', JSON.stringify(mine?.transcript));
+  check('open view still masks the phone number', mine && !/\d{6,}/.test(mine.phone), mine && mine.phone);
+  // ---- sweeper: a call that went quiet without its end-of-call webhook is finalised from the live transcript ----
+  const stale = await q("INSERT INTO calls (external_call_id, transcript, updated_at) VALUES ($1,$2, now() - interval '10 minutes') RETURNING id", ['sweep-' + Date.now(), 'AGENT: Hello\nUSER: hi']);
+  const { sweepStaleCalls } = await import('../src/vaani-events.js');
+  const swept = await sweepStaleCalls({ quietMinutes: 3 });
+  const sweptRow = (await q('SELECT finalized_at, route FROM calls WHERE id=$1', [stale.rows[0].id])).rows[0];
+  check('a quiet call with no webhook is finalised by the sweeper', swept.some((x) => x.callId == stale.rows[0].id) && sweptRow.finalized_at && sweptRow.route, JSON.stringify(sweptRow));
+  await q('DELETE FROM costs WHERE call_id=$1', [stale.rows[0].id]);
+  await q('DELETE FROM outbox WHERE payload::text LIKE $1', ['%' + stale.rows[0].id + '%']);
+  await q('DELETE FROM calls WHERE id=$1', [stale.rows[0].id]);
   process.env.DASHBOARD_PASSWORD = savedPw;
   const closed = await req('GET', '/api/dashboard');
   check('setting a password again closes it', closed.s === 401);

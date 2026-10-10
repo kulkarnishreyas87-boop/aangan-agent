@@ -96,3 +96,6 @@ CREATE TABLE IF NOT EXISTS confirm_calls (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE calls ADD COLUMN IF NOT EXISTS byol_state JSONB;                          -- per-call conversation state, so a dropped WebSocket can resume
+
+-- Last time the live conversation moved. A call that stops moving without a call_postprocessing webhook is finalised by the sweeper.
+ALTER TABLE calls ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();

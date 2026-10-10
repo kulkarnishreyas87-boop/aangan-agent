@@ -63,3 +63,24 @@ export async function onVaaniEvent(body) {
 
   return { ignored: e.event };
 }
+
+/**
+ * Safety net for a missing call_postprocessing webhook (not configured, blocked, or lost). A call that has a live transcript and has
+ * been quiet for a few minutes is finalised from that transcript, exactly as the webhook would have done. finalizeCall is idempotent,
+ * so a late webhook afterwards changes nothing.
+ */
+export async function sweepStaleCalls({ quietMinutes = 3 } = {}) {
+  const done = [];
+  for (const c of await store.staleOpenCalls(quietMinutes)) {
+    try {
+      const r = await finalizeCall({
+        externalCallId: c.external_call_id, callerPhone: c.caller_phone, endedAt: c.updated_at,
+        durationS: c.duration_s ?? (c.started_at ? Math.max(1, Math.round((new Date(c.updated_at) - new Date(c.started_at)) / 1000)) : null),
+        transcript: c.transcript
+      });
+      done.push({ callId: c.id, ...r });
+    } catch (e) { console.error('[sweep] could not finalise call', c.id, e.message); }
+  }
+  if (done.length) await drain();
+  return done;
+}

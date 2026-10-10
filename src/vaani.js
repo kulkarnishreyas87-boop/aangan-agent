@@ -37,7 +37,7 @@ export function parseEvent(body) {
   return {
     event: body?.event ?? '',
     callId: callIdOf(body),
-    phone: String(body?.phone_number ?? data.phone_number ?? '').replace(/s+/g, '') || null,
+    phone: String(body?.phone_number ?? data.phone_number ?? '').replace(/[\s]+/g, '') || null,
     transcript: typeof data.transcript === 'string' ? data.transcript : (typeof body?.transcript === 'string' ? body.transcript : ''),
     // Docs: call_postprocessing.data.call_duration is in MILLISECONDS; call_ended.call_duration is in SECONDS.
     durationS: ms != null ? Math.round(ms / 1000) : sec != null ? Math.round(sec) : null,

@@ -40,10 +40,17 @@ export async function historyFor(phone, excludeCallId) {
     .join('\n');
 }
 
+/** Calls that had a live conversation, then went quiet, and never got their end-of-call webhook. */
+export const staleOpenCalls = async (quietMinutes = 3, limit = 5) =>
+  (await q(
+    "SELECT * FROM calls WHERE finalized_at IS NULL AND length(COALESCE(transcript,'')) > 0 AND updated_at < now() - make_interval(mins => $1) ORDER BY id LIMIT $2",
+    [quietMinutes, limit]
+  )).rows;
+
 export async function saveTurnDecision(callId, { transcript, decision, route, reasonCodes, clarified }) {
   await q(
     `UPDATE calls SET transcript=$2, decision=$3, route=$4, reason_codes=$5,
-            clarify_count = clarify_count + $6 WHERE id=$1`,
+            clarify_count = clarify_count + $6, updated_at=now() WHERE id=$1`,
     [callId, transcript, decision, route, reasonCodes, clarified ? 1 : 0]
   );
 }

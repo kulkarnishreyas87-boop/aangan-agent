@@ -22,13 +22,22 @@ export async function publicStats() {
   return rows[0];
 }
 
-/** First name only. An open dashboard must not show a customer's full name. */
-const firstName = (n) => (n ? String(n).trim().split(/\s+/)[0] : n);
+/** A transcript of AGENT:/USER: lines becomes [{who:"agent", text:"hi"}, ...]. A line without a speaker continues the previous one. */
+export function transcript(t) {
+  const out = [];
+  for (const line of String(t ?? '').split(/\r?\n/)) {
+    const m = /^\s*(AGENT|USER)\s*:\s*(.*)$/i.exec(line);
+    if (m) out.push({ who: m[1].toLowerCase() === 'agent' ? 'agent' : 'caller', text: m[2] });
+    else if (line.trim() && out.length) out[out.length - 1].text += ' ' + line.trim();
+  }
+  return out;
+}
 
-/**
- * opts.open = true when there is no login. Then names are cut to a first name and the handoff notes (which hold the details a
- * customer gave: size, budget hints, family) are left out. Counts, areas, masked numbers and booking times stay.
- */
+/** {budget:{status,evidence}} becomes [{key,status,evidence}] in the order the studio thinks about them. */
+const ORDER = ['real_project', 'service_area', 'timeline', 'budget', 'decision_maker'];
+const criteriaOf = (c) => (c && typeof c === 'object' ? ORDER.filter((k) => c[k]).map((k) => ({ key: k, status: c[k].status ?? 'unclear', evidence: c[k].evidence ?? '' })) : []);
+
+/** opts.open = true when there is no login. Phone numbers are masked either way. */
 export async function dashboardData(opts = {}) {
   const open = Boolean(opts.open);
   const [totals, daily, routes, reasons, recent, upcoming, usage, outcomes, live] = await Promise.all([
@@ -50,7 +59,7 @@ export async function dashboardData(opts = {}) {
       GROUP BY d ORDER BY d`),
     q(`SELECT route, count(*)::int AS n FROM calls WHERE finalized_at IS NOT NULL AND route IS NOT NULL GROUP BY route ORDER BY n DESC`),
     q(`SELECT r AS code, count(*)::int AS n FROM calls, unnest(reason_codes) AS r WHERE route='DECLINE' GROUP BY r ORDER BY n DESC`),
-    q(`SELECT c.id, c.created_at, c.finalized_at, c.caller_phone, c.route, c.reason_codes, c.duration_s, c.handoff_note,
+    q(`SELECT c.id, c.created_at, c.finalized_at, c.caller_phone, c.route, c.reason_codes, c.duration_s, c.handoff_note, c.transcript, c.updated_at, c.decision->>'summary' AS summary_text, c.decision->'criteria' AS criteria,
         c.decision->'extracted'->>'name' AS name, c.decision->'extracted'->>'area' AS area,
         c.decision->'extracted'->>'property_type' AS property_type, c.decision->'extracted'->>'scope' AS scope,
         c.hubspot_deal_id IS NOT NULL AS in_hubspot,
@@ -89,12 +98,12 @@ export async function dashboardData(opts = {}) {
     routes: routes.rows,
     declineReasons: reasons.rows,
     recent: recent.rows.map((r) => ({
-      id: r.id, at: r.created_at, done: Boolean(r.finalized_at), phone: maskPhone(r.caller_phone), name: open ? firstName(r.name) : r.name, area: r.area,
+      id: r.id, at: r.created_at, done: Boolean(r.finalized_at), phone: maskPhone(r.caller_phone), name: r.name, area: r.area,
       summary: [r.property_type, r.scope].filter(Boolean).join(', ') || null, route: r.route, reasons: r.reason_codes ?? [],
-      durationS: r.duration_s, note: open ? null : r.handoff_note, inHubspot: r.in_hubspot, outcome: r.outcome,
+      durationS: r.duration_s, note: r.handoff_note, transcript: transcript(r.transcript), aiSummary: r.summary_text, criteria: criteriaOf(r.criteria), lastActivity: r.updated_at, inHubspot: r.in_hubspot, outcome: r.outcome,
       booking: r.booking_start ? { start: r.booking_start, status: r.booking_status, type: r.visit_type, confirmed: Boolean(r.confirmed_at) } : null
     })),
-    upcoming: upcoming.rows.map((b) => ({ id: b.id, start: b.start_at, type: b.visit_type, name: open ? firstName(b.name) : b.name, area: b.area, confirmed: Boolean(b.confirmed_at) })),
+    upcoming: upcoming.rows.map((b) => ({ id: b.id, start: b.start_at, type: b.visit_type, name: b.name, area: b.area, confirmed: Boolean(b.confirmed_at) })),
     usage: { tokensIn: Number(u.tokens_in), tokensOut: Number(u.tokens_out), costInr: u.cost_inr == null ? null : Number(u.cost_inr), callsCosted: u.calls_costed },
     system: {
       outbox: await store.outboxStats(),
