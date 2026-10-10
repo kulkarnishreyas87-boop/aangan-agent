@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-for (const m of ['config', 'rules', 'gemini', 'db', 'email', 'hubspot', 'calcom', 'vaani', 'pipeline', 'worker', 'http-server', 'url', 'background', 'env-check', 'status-page']) {
+for (const m of ['config', 'rules', 'gemini', 'db', 'email', 'hubspot', 'calcom', 'vaani', 'pipeline', 'worker', 'http-server', 'url', 'background', 'env-check', 'auth', 'dashboard-data', 'static']) {
   test(`imports src/${m}.js`, async () => {
     const mod = await import(`../src/${m}.js`);
     assert.ok(Object.keys(mod).length > 0);

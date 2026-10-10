@@ -6,7 +6,7 @@ import { cleanupTestRows } from './_cleanup.js';
 
 Object.assign(process.env, {
   PUBLIC_BASE_URL: 'https://example.test', ACTION_LINK_SECRET: 'http-test-link-secret',
-  CALCOM_WEBHOOK_SECRET: 'http-test-cal-secret', VAANI_WEBHOOK_SECRET: 'http-test-path-secret', VAANI_BYOL_TOKEN: 'http-test-byol'
+  CALCOM_WEBHOOK_SECRET: 'http-test-cal-secret', DASHBOARD_PASSWORD: 'http-test-dashboard-pw', DASHBOARD_PASSWORD: 'http-test-dashboard-pw', VAANI_WEBHOOK_SECRET: 'http-test-path-secret', VAANI_BYOL_TOKEN: 'http-test-byol'
 });
 const store = await import('../src/db.js');
 const email = await import('../src/email.js');
@@ -23,7 +23,7 @@ const req = async (method, path, body, headers = {}) => {
   const r = await fetch(base + path, { method, headers, body });
   return { s: r.status, t: await r.text() };
 };
-const link = (id, action, tamper = false) => { const u = new URL(email.actionLink(id, action)); return `${u.pathname}${u.search.replace(/sig=(.)/, tamper ? 'sig=0' : 'sig=$1')}`; };
+const link = (id, action, tamper = false) => { const u = new URL(email.actionLink(id, action)); if (tamper) { const sig = u.searchParams.get('sig'); u.searchParams.set('sig', (sig[0] === '0' ? '1' : '0') + sig.slice(1)); } return `${u.pathname}${u.search}`; };
 const form = (o) => new URLSearchParams(o).toString();
 const FORM = { 'content-type': 'application/x-www-form-urlencoded' };
 
@@ -45,10 +45,36 @@ try {
   check('cron endpoint with the right secret drains the outbox', cronOk.s === 200 && JSON.parse(cronOk.t).ok === true, cronOk.t);
 
   const front = await req('GET', '/');
-  check('the front address shows a status page, not a bare error', front.s === 200 && /<title>Aangan Enquiry Agent<\/title>/.test(front.t) && /calls handled/.test(front.t), 'HTTP ' + front.s);
+  check('the front address shows the landing page, not a bare error', front.s === 200 && /<title>Aangan Studio Enquiry Agent<\/title>/.test(front.t) && /calls handled/.test(front.t), 'HTTP ' + front.s);
   check('the status page leaks no secret or phone number', !/(secret|token|api[_-]?key|\+91\d{6,})/i.test(front.t.replace(/Auth Token|private secret/gi, '')) , '');
   const fav = await req('GET', '/favicon.ico');
-  check('favicon request is answered quietly', fav.s === 204);
+  check('favicon request is answered quietly, not with an error', fav.s === 204 || fav.s === 200);
+
+  // ---- dashboard login, data API and static files ----
+  const dash0 = await req('GET', '/api/dashboard');
+  check('dashboard data is refused without a login', dash0.s === 401);
+  const loginBad = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '7.7.7.7' }, body: JSON.stringify({ password: 'wrong' }) });
+  check('a wrong password is refused', loginBad.status === 401);
+  const loginOk = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '8.8.8.8' }, body: JSON.stringify({ password: 'http-test-dashboard-pw' }) });
+  const cookie = (loginOk.headers.get('set-cookie') ?? '');
+  check('the right password sets an HttpOnly, SameSite session cookie', loginOk.status === 200 && /HttpOnly/i.test(cookie) && /SameSite=Lax/i.test(cookie), cookie.replace(/=[^;]+/, '=…').slice(0, 90));
+  const sess = cookie.split(';')[0];
+  const dash1 = await req('GET', '/api/dashboard', undefined, { cookie: sess });
+  const dj = dash1.s === 200 ? JSON.parse(dash1.t) : {};
+  check('with the cookie the dashboard data loads, with the expected shape', dash1.s === 200 && dj.kpis && Array.isArray(dj.daily) && dj.daily.length === 14 && Array.isArray(dj.recent) && dj.system?.outbox, 'HTTP ' + dash1.s);
+  check('dashboard data never contains a full phone number', !/\+\d{12}/.test(dash1.t));
+  const tamperedCookie = await req('GET', '/api/dashboard', undefined, { cookie: sess.slice(0, -2) + 'aa' });
+  check('a tampered session cookie is refused', tamperedCookie.s === 401);
+  const pub = await req('GET', '/api/public-stats');
+  check('public stats expose counts only', pub.s === 200 && Object.keys(JSON.parse(pub.t)).sort().join() === 'last_24h,qualified,total', pub.t);
+  let locked = 0; for (let i = 0; i < 8; i++) { const r = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '6.6.6.6' }, body: JSON.stringify({ password: 'nope' + i }) }); if (r.status === 429) locked++; }
+  check('repeated wrong passwords from one address are locked out', locked >= 1, locked + ' of 8 refused with 429');
+  const css = await fetch(base + '/css/site.css'); const jpg = await fetch(base + '/img/hero-1.jpg'); const dashPage = await fetch(base + '/dashboard');
+  check('the site files are served with the right types', css.status === 200 && /text\/css/.test(css.headers.get('content-type')) && jpg.status === 200 && jpg.headers.get('content-type') === 'image/jpeg' && dashPage.status === 200 && /text\/html/.test(dashPage.headers.get('content-type')));
+  const trav = await Promise.all(['/..%2f.env', '/%2e%2e/%2e%2e/.env', '/css/..%2f..%2fpackage.json', '/js/../../.env'].map((p) => req('GET', p)));
+  check('path traversal cannot reach files outside public/', trav.every((r) => r.s === 404 && !/DATABASE_URL|"name"/.test(r.t)), trav.map((r) => r.s).join(','));
+  const noSource = await req('GET', '/src/db.js');
+  check('server source files are not served', noSource.s === 404);
 
   const unknown = await req('GET', '/nope');
   check('unknown path returns 404', unknown.s === 404);

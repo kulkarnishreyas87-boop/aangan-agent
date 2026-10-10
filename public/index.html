@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aangan Studio Enquiry Agent</title>
+<meta name="description" content="Every phone enquiry answered at once, qualified against the founder's own rules, and handed to a designer with a consultation already booked.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<script>try{var t=localStorage.getItem('aangan-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+</head>
+<body>
+<div class="blobs" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="nav glass">
+  <a class="logo" href="/" aria-label="Aangan Studio">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset=".55" stop-color="#8b5cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#lg)"/><path d="M10 30V19a10 10 0 0 1 20 0v11" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M16 30v-7a4 4 0 0 1 8 0v7" fill="#fff" opacity=".9"/></svg>
+    Aangan Studio
+  </a>
+  <nav aria-label="Main">
+    <a href="#how">How it works</a><a href="#features">What it does</a><a href="#demo">Live example</a><a href="#spaces">Spaces</a>
+    <a class="keep" href="/dashboard">Dashboard</a>
+  </nav>
+  <button class="iconbtn" id="theme" aria-label="Switch between dark and light theme">🌙</button>
+</header>
+
+<main>
+<section class="hero" id="top">
+  <div class="slides" aria-hidden="true">
+    <img src="/img/hero-1.jpg" alt="" class="on"><img src="/img/hero-2.jpg" alt="" loading="lazy"><img src="/img/hero-3.jpg" alt="" loading="lazy"><img src="/img/hero-4.jpg" alt="" loading="lazy">
+  </div>
+  <div class="hero-inner">
+    <div>
+      <span class="pill glass"><i class="live-dot"></i> Answering calls right now, day and night</span>
+      <h1 id="headline">Every enquiry answered. Every good lead <span class="grad-text">handed over ready.</span></h1>
+      <p class="lead">Aangan Studio's phone agent picks up on the first ring, asks the right questions in English, Hindi or Marathi, decides with the founder's own rules, and books the first consultation for you.</p>
+      <div class="cta-row"><a class="btn" href="/dashboard">Open the dashboard →</a><a class="btn ghost" href="#demo">Watch a call unfold</a></div>
+      <div class="chips" id="chips">
+        <div class="chip glass"><b data-count="0" id="c-total">0</b><span>calls handled</span></div>
+        <div class="chip glass"><b data-count="0" id="c-qual">0</b><span>qualified leads</span></div>
+        <div class="chip glass"><b>24×7</b><span>always answering</span></div>
+      </div>
+    </div>
+    <aside class="call-card glass" aria-label="Example call">
+      <div class="call-head"><div class="avatar">A</div><div><b>Incoming call</b><br><small style="color:#b9c3e3">Pune · Kothrud</small></div><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="bubble a" style="animation-delay:.6s">Good morning, Aangan Studio. How can I help?</div>
+      <div class="bubble u" style="animation-delay:1.8s">We want to redo our 3BHK in Kothrud.</div>
+      <div class="bubble a" style="animation-delay:3s">Lovely. How big is it, and when do you need it done?</div>
+    </aside>
+  </div>
+  <div class="scrollcue" aria-hidden="true"></div>
+</section>
+
+<section class="block" id="how">
+  <div class="reveal"><div class="eyebrow">How it works</div><h2>From a ringing phone to a booked consultation</h2><p class="sub">Four steps, all automatic, and every decision is saved so nothing depends on anyone's memory.</p></div>
+  <div class="steps">
+    <article class="step glass reveal"><div class="n">1</div><h3>It answers</h3><p>The voice agent picks up on the first ring, any hour, and listens in English, Hindi or Marathi.</p></article>
+    <article class="step glass reveal" style="transition-delay:.1s"><div class="n">2</div><h3>It understands</h3><p>It scores five things: a real project, service area, timeline, budget signals and who decides.</p></article>
+    <article class="step glass reveal" style="transition-delay:.2s"><div class="n">3</div><h3>It decides</h3><p>Qualify, ask one more question, decline kindly, or escalate a complaint. Hard rules can overrule the AI.</p></article>
+    <article class="step glass reveal" style="transition-delay:.3s"><div class="n">4</div><h3>It hands over</h3><p>A slot is booked, the designer gets a full note by email, and a deal appears in the CRM.</p></article>
+  </div>
+</section>
+
+<section class="block" id="features">
+  <div class="reveal"><div class="eyebrow">What it does</div><h2>Built around how Aangan actually works</h2></div>
+  <div class="features">
+    <article class="feat glass reveal" style="--g:linear-gradient(135deg,#6366f1,#8b5cf6);--c:#6366f1"><div class="ico">📞</div><h3>Never misses a call</h3><p>A third of enquiries arrive after 7pm. They all get answered, with replies in about three seconds.</p></article>
+    <article class="feat glass reveal" style="--g:linear-gradient(135deg,#10b981,#14b8a6);--c:#10b981;transition-delay:.08s"><div class="ico">🧠</div><h3>Decides like the founder</h3><p>Nikhil's own five-point rubric drives every decision, with the reasons stored for review.</p></article>
+    <article class="feat glass reveal" style="--g:linear-gradient(135deg,#f59e0b,#f43f5e);--c:#f59e0b;transition-delay:.16s"><div class="ico">🗣️</div><h3>Speaks your customers' language</h3><p>English, Hindi and Marathi, in the studio's warm, plain tone, one question at a time.</p></article>
+    <article class="feat glass reveal" style="--g:linear-gradient(135deg,#ec4899,#8b5cf6);--c:#ec4899"><div class="ico">🚫</div><h3>Never quotes a price</h3><p>Pricing depends on the site, so every reply passes a filter that blocks any figure before it is spoken.</p></article>
+    <article class="feat glass reveal" style="--g:linear-gradient(135deg,#38bdf8,#6366f1);--c:#38bdf8;transition-delay:.08s"><div class="ico">📅</div><h3>Books the consultation</h3><p>Reads what the caller said about their availability and books a real slot in the designer's calendar.</p></article>
+    <article class="feat glass reveal" style="--g:linear-gradient(135deg,#14b8a6,#38bdf8);--c:#14b8a6;transition-delay:.16s"><div class="ico">📨</div><h3>Hands over everything</h3><p>Designers get the full brief by email, so their first call is never spent re-asking the basics.</p></article>
+  </div>
+</section>
+
+<section class="block" id="demo">
+  <div class="reveal"><div class="eyebrow">Live example</div><h2>Watch a call become a decision</h2><p class="sub">An illustrative conversation. On the right, the five checks light up as the caller answers.</p></div>
+  <div class="demo">
+    <div class="phone glass reveal" id="phone" aria-label="Example conversation"></div>
+    <div class="verdict reveal" id="verdict" aria-label="How the call is scored"></div>
+  </div>
+</section>
+
+<section class="block" id="spaces">
+  <div class="reveal"><div class="eyebrow">Spaces we design</div><h2>Homes and offices across Pune and PCMC</h2></div>
+  <div class="mosaic">
+    <figure class="m1 reveal"><img src="/img/lounge.jpg" alt="Modern living room with large windows" loading="lazy"><figcaption>Living rooms</figcaption></figure>
+    <figure class="m2 reveal"><img src="/img/kitchen.jpg" alt="Modern open kitchen and living area" loading="lazy"><figcaption>Kitchens</figcaption></figure>
+    <figure class="m3 reveal"><img src="/img/bedroom.jpg" alt="Calm modern bedroom" loading="lazy"><figcaption>Bedrooms</figcaption></figure>
+    <figure class="m4 reveal"><img src="/img/dining.jpg" alt="Dining area with stylish chairs" loading="lazy"><figcaption>Dining</figcaption></figure>
+    <figure class="m5 reveal"><img src="/img/living.jpg" alt="Cosy open-plan living area" loading="lazy"><figcaption>Open plan</figcaption></figure>
+    <figure class="m6 reveal"><img src="/img/hero-4.jpg" alt="Kitchen and dining area" loading="lazy"><figcaption>Kitchen and dining</figcaption></figure>
+  </div>
+  <div class="marquee" aria-label="Areas served"><div id="areas"></div></div>
+</section>
+
+<section class="band reveal"><div class="band-in"><h2>See the numbers behind every call</h2><p class="sub" style="margin:0 auto 22px">Calls, qualified leads, bookings, decline reasons and costs, updating live.</p><a class="btn" href="/dashboard">Open the dashboard →</a></div></section>
+</main>
+
+<footer><div class="foot"><div><b>Aangan Studio enquiry agent.</b> Voice by Vaani, decisions by Gemini, records in Neon, bookings in Cal.com, leads in HubSpot, email by Resend.</div>
+<div class="credits" id="credits"><span>Photos, open licences via Wikimedia Commons:</span></div></div></footer>
+<script src="/js/landing.js" defer></script>
+</body>
+</html>

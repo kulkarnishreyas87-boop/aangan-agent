@@ -16,7 +16,9 @@ import { drain } from './worker.js';
 import { background } from './background.js';
 import { safeEqual } from './vaani.js';
 import { restoreUrl } from './url.js';
-import { statusPage } from './status-page.js';
+import { serveStatic } from './static.js';
+import * as auth from './auth.js';
+import { dashboardData, publicStats } from './dashboard-data.js';
 
 const MAX_BODY = 2_000_000;
 
@@ -119,13 +121,40 @@ const routes = {
     await drain(50);
     return json(res, 200, { ok: true, outbox: await store.outboxStats() });
   },
-  'GET /': async (req, res) => {
-    const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost').split(',')[0].trim();
-    const html = await statusPage(host);
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(html);
+  // ---- dashboard API. Login gives a signed cookie; everything with customer data needs it. ----
+  'POST /api/login': async (req, res, raw) => {
+    const ip = auth.clientIp(req);
+    if (!auth.dashboardEnabled()) return json(res, 503, { error: 'The dashboard login is not set up yet.' });
+    if (auth.throttled(ip)) return json(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+    let password = '';
+    try { password = JSON.parse(raw || '{}').password; } catch { return json(res, 400, { error: 'invalid JSON' }); }
+    if (!auth.passwordOk(password)) {
+      auth.recordFailure(ip);
+      await new Promise((r) => setTimeout(r, 400)); // a wrong guess is never answered faster than a right one
+      return json(res, 401, { error: 'That password is not right.' });
+    }
+    auth.clearFailures(ip);
+    res.setHeader('set-cookie', auth.sessionCookie(req, auth.makeSession()));
+    return json(res, 200, { ok: true });
   },
-  'GET /favicon.ico': async (req, res) => { res.writeHead(204); res.end(); },
+  'POST /api/logout': async (req, res) => {
+    res.setHeader('set-cookie', auth.clearCookie(req));
+    return json(res, 200, { ok: true });
+  },
+  'GET /api/me': async (req, res) => {
+    res.setHeader('cache-control', 'no-store');
+    return json(res, 200, { enabled: auth.dashboardEnabled(), authed: auth.isAuthed(req) });
+  },
+  'GET /api/dashboard': async (req, res) => {
+    res.setHeader('cache-control', 'no-store');
+    if (!auth.isAuthed(req)) return json(res, 401, { error: 'login required' });
+    return json(res, 200, await dashboardData());
+  },
+  'GET /api/public-stats': async (req, res) => {
+    res.setHeader('cache-control', 'public, max-age=15');
+    try { return json(res, 200, await publicStats()); } catch { return json(res, 200, { total: 0, qualified: 0, last_24h: 0 }); }
+  },
+  'GET /favicon.ico': async (req, res) => { res.writeHead(302, { location: '/favicon.svg' }); res.end(); },
   'GET /health': async (req, res) => {
     try { return json(res, 200, { ok: true, db: true, outbox: await store.outboxStats() }); }
     catch { return json(res, 503, { ok: false, db: false }); }
@@ -145,7 +174,10 @@ export function createServer() {
       }
       const key = `${req.method} ${path}`;
       const handler = routes[key];
-      if (!handler) return json(res, 404, { error: 'not found' });
+      if (!handler) {
+        if (await serveStatic(req, res, path)) return;
+        return json(res, 404, { error: 'not found' });
+      }
       await handler(req, res, req.method === 'POST' ? await readBody(req) : '');
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 500;

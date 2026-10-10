@@ -10,7 +10,7 @@
   ],
   "functions": {
     "api/server.js": {
-      "includeFiles": "{src/knowledge/**,vaani/AGENT_PROMPT.md}"
+      "includeFiles": "{src/knowledge/**,vaani/AGENT_PROMPT.md,public/**}"
     }
   },
   "crons": [

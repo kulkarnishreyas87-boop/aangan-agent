@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Dashboard · Aangan Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<script>try{var t=localStorage.getItem('aangan-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset=".55" stop-color="#8b5cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs></svg>
+<div class="blobs" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<!-- Login -->
+<div class="login" id="login" hidden>
+  <div class="login-bg" aria-hidden="true"></div>
+  <form class="login-card glass" id="loginForm" autocomplete="on">
+    <svg viewBox="0 0 40 40" width="56" height="56" aria-hidden="true"><rect width="40" height="40" rx="12" fill="url(#lg2)"/><path d="M10 30V19a10 10 0 0 1 20 0v11" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M16 30v-7a4 4 0 0 1 8 0v7" fill="#fff" opacity=".9"/></svg>
+    <h1>Welcome back</h1>
+    <p>Enter the dashboard password to see live calls, leads and bookings.</p>
+    <div class="field"><label class="sr" for="pw">Password</label><input id="pw" type="password" placeholder="Dashboard password" autocomplete="current-password" required></div>
+    <div class="err" id="loginErr" role="alert"></div>
+    <button class="btn" style="width:100%;justify-content:center" id="loginBtn">Unlock dashboard</button>
+    <p style="margin:18px 0 0;font-size:13px"><a href="/" style="color:#cdd5ee">← Back to the site</a></p>
+  </form>
+</div>
+
+<!-- App -->
+<div class="app" id="app" hidden>
+  <aside>
+    <a class="logo" href="/"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="url(#lg2)"/><path d="M10 30V19a10 10 0 0 1 20 0v11" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M16 30v-7a4 4 0 0 1 8 0v7" fill="#fff" opacity=".9"/></svg>Aangan</a>
+    <a class="navitem active" href="#overview"><span>🏠</span>Overview</a>
+    <a class="navitem" href="#pipeline"><span>📈</span>Pipeline</a>
+    <a class="navitem" href="#calls"><span>📞</span>Calls</a>
+    <a class="navitem" href="#system"><span>⚙️</span>System</a>
+    <div class="side-foot">
+      <span class="pill" id="livePill"><i class="live-dot"></i><span id="liveText">Live</span></span>
+      <a class="btn ghost small" href="/">← Public site</a>
+      <button class="btn ghost small" id="logout">Log out</button>
+    </div>
+  </aside>
+
+  <main class="dash">
+    <div class="topbar">
+      <div><h2 style="font-size:26px">Dashboard</h2><span class="updated" id="updated">Loading…</span></div>
+      <div class="sp">
+        <button class="btn ghost small" id="sampleBtn">✨ Preview with sample data</button>
+        <button class="iconbtn" id="refresh" aria-label="Refresh now">↻</button>
+        <button class="iconbtn" id="theme" aria-label="Switch between dark and light theme">🌙</button>
+      </div>
+    </div>
+    <div class="sample-banner" id="sampleBanner">Showing SAMPLE data to preview the design. These are not real calls.</div>
+
+    <section class="banner" id="overview">
+      <div class="banner-grid">
+        <div>
+          <span class="pill" style="background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff"><i class="live-dot"></i><span id="liveBanner">Agent is live</span></span>
+          <h1 id="greeting" style="margin-top:14px">Good day, team</h1>
+          <p id="bannerSub">Every enquiry that reaches the studio is answered, scored and handed over, automatically.</p>
+        </div>
+        <div class="big">
+          <div><b id="b24" class="count">0</b><span>calls in 24 hours</span></div>
+          <div><b id="bRate" class="count">0%</b><span>qualified rate</span></div>
+          <div><b id="bDur">0:00</b><span>avg call length</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid g6" id="kpis"></div>
+
+    <div class="grid g2">
+      <section class="card glass reveal in"><h3>📊 Calls per day <small style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600">last 14 days</small></h3><svg class="chart" id="barChart" viewBox="0 0 700 260" preserveAspectRatio="none" role="img" aria-label="Calls per day"></svg><div class="legend" id="barLegend"></div></section>
+      <section class="card glass reveal in"><h3>🎯 Where calls end up</h3><div class="donut-wrap"><svg class="donut" id="donut" viewBox="0 0 200 200" role="img" aria-label="Call outcomes"></svg><div class="legend-col" id="donutLegend"></div></div></section>
+    </div>
+
+    <div class="grid g2b" id="pipeline">
+      <section class="card glass funnel"><h3>🧭 Lead funnel</h3><div class="bars" id="funnel"></div></section>
+      <section class="card glass"><h3>🚦 Why we declined</h3><div class="bars" id="reasons"></div></section>
+    </div>
+
+    <div class="grid g2" id="calls">
+      <section class="card glass"><h3>📞 Recent calls <small style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600">tap a call for details</small></h3><div class="feed" id="feed"></div></section>
+      <section class="card glass"><h3>🗓️ Upcoming consultations</h3><div class="cons" id="cons"></div></section>
+    </div>
+
+    <div class="grid g3" id="system">
+      <section class="card glass"><h3>🩺 System health</h3><div class="sys" id="health"></div></section>
+      <section class="card glass"><h3>🔌 Connections</h3><div class="sys" id="integrations"></div></section>
+      <section class="card glass"><h3>🤖 AI usage</h3><div class="sys" id="usage"></div></section>
+    </div>
+  </main>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/js/charts.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -105,3 +105,31 @@ test('directive: a caller who already gave their availability is wrapped up, not
   assert.equal(d.endCall, true);
   assert.doesNotMatch(d.directive, /ask when|when they are free/i);
 });
+
+test('dashboard sessions: valid, expired, tampered and wrong-password cases', async () => {
+  process.env.DASHBOARD_PASSWORD = 'correct horse';
+  process.env.ACTION_LINK_SECRET = 'link-secret-for-tests';
+  const auth = await import('../src/auth.js');
+  assert.equal(auth.passwordOk('correct horse'), true);
+  assert.equal(auth.passwordOk('correct horsf'), false);
+  assert.equal(auth.passwordOk(''), false);
+  const now = Date.now();
+  const tok = auth.makeSession(now);
+  assert.equal(auth.sessionValid(tok, now + 1000), true);
+  assert.equal(auth.sessionValid(tok, now + 13 * 3600 * 1000), false, 'expires after 12 hours');
+  const [exp, sig] = tok.split('.');
+  assert.equal(auth.sessionValid(`${Number(exp) + 99999}.${sig}`, now), false, 'a changed expiry is rejected');
+  assert.equal(auth.sessionValid(`${exp}.${sig.slice(0, -1)}0`, now), false, 'a changed signature is rejected');
+  assert.equal(auth.sessionValid('garbage', now), false);
+  assert.equal(auth.sessionValid(null, now), false);
+  for (let i = 0; i < 6; i++) auth.recordFailure('9.9.9.9', now);
+  assert.equal(auth.throttled('9.9.9.9', now + 1000), true, 'six failures lock an address');
+  assert.equal(auth.throttled('9.9.9.9', now + 16 * 60 * 1000), false, 'the lock lapses after 15 minutes');
+});
+
+test('phone masking keeps only the country code and the last three digits', async () => {
+  const { maskPhone } = await import('../src/dashboard-data.js');
+  assert.equal(maskPhone('+919999900009'), '+91 •••••• 009');
+  assert.equal(maskPhone(null), 'Unknown number');
+  assert.doesNotMatch(maskPhone('+919999900009'), /99999/);
+});

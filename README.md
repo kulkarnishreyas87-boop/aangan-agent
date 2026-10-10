@@ -42,6 +42,14 @@ The agent can be created with BYOL already on by `node --env-file=.env scripts/v
 
 Because the server writes every reply (BYOL), Vaani's own LLM and prompt are not used. The studio playbook lives in [`vaani/AGENT_PROMPT.md`](vaani/AGENT_PROMPT.md).
 
+## The website and dashboard
+
+- **Public site** at `/`: an animated landing page (rotating interior photos, a live call preview, how it works, a typed example call, a photo gallery). It shows only counts from `/api/public-stats`.
+- **Dashboard** at `/dashboard`, behind a password (`DASHBOARD_PASSWORD`, signed HttpOnly cookie, 12 h, 6 wrong tries per 15 minutes per address). Live KPIs, a 14-day chart, outcome donut, lead funnel, decline reasons, recent calls with notes, upcoming consultations, system health, connections and AI usage. It refreshes every 10 s and shows a toast when a call arrives. Phone numbers are masked. The "Preview with sample data" button shows the design with clearly labelled fake data.
+- Files live in `public/` (no build step, no front-end dependencies: charts are hand-drawn SVG). The server also serves them itself, so a plain Node host behaves like Vercel. Path traversal and source files are blocked and tested.
+- Photos are open-licensed images from Wikimedia Commons, resized and stored in `public/img/`; `credits.json` has each photographer and licence and the footer credits them. Replace them with your own project photos any time.
+- Dashboard data comes from `src/dashboard-data.js`; login from `src/auth.js`. Set `DASHBOARD_PASSWORD` (and optionally `DASHBOARD_SESSION_SECRET`) in `.env`.
+
 ## Deploying on Vercel
 
 Deployed at <https://aangan-agent-one.vercel.app> (Vercel project `aangan-agent`, region Singapore to sit next to Neon). `api/server.js` is the function entry point: Vercel serves WebSockets from a function that default-exports an `http.Server` with `ws` attached ([docs](https://vercel.com/docs/functions/websockets)). `vercel.json` rewrites every path to it, passing the original path as `?__p=` (restored by `src/url.js`).
@@ -92,7 +100,7 @@ Never commit `.env`; it is git-ignored. Rotate any key that has been pasted into
 | Command | Needs | What it proves |
 |---|---|---|
 | `npm test` | nothing | 40 unit tests: rules and routing against the real transcripts, price filter, signed links, Vaani helpers, prompt directives. |
-| `npm run e2e:http` | Neon | Email links (claim, won, lost), Cal.com webhook signature, health, malformed and oversized input. 19 checks. |
+| `npm run e2e:http` | Neon | Email links, Cal.com webhook signature, health, malformed input, dashboard login and cookie, data API shape, masked numbers, lockout, static files and path traversal. 38 checks. |
 | `npm run e2e:concurrency` | Neon, Gemini | Races real workers: one HubSpot deal and one Cal.com booking under parallel jobs, retry after a vendor failure, backoff, dead-lettering with an alert. 12 checks. |
 | `npm run e2e:mock` | Neon, Gemini | Full flow with stand-in Cal.com, HubSpot and Resend. 14 checks. |
 | `npm run simulate:vaani` | Neon, Gemini | A stand-in Vaani talks to the real server over a real WebSocket and webhooks, following Vaani's documented contract. 21 checks. |
@@ -126,6 +134,10 @@ src/pipeline.js      in-call decision and end-of-call finalise
 bin/start.js         long-running entry point (any normal Node host); api/server.js is the Vercel entry
 src/worker.js        outbox: email, HubSpot, scheduler, confirmation, retries and dead-lettering
 src/http-server.js   HTTP endpoints (router)
+src/auth.js          dashboard login and sessions
+src/dashboard-data.js  dashboard and public statistics
+src/static.js        serves public/
+public/              landing page, dashboard, CSS, JS, photos
 api/server.js        Vercel entry point
 src/db.js            Neon queries, locks
 src/email.js         Resend and signed links
