@@ -2,7 +2,7 @@
 //   decideTurn   - during the call: Gemini decides, the rules check guards it, Vaani gets the route back.
 //   finalizeCall - after the call: final decision, handoff note, then Neon + outbox in one transaction.
 import { decide, writeHandoffNote } from './gemini.js';
-import { deriveRoute, scrubPrice, PRICE_DEFLECTION } from './rules.js';
+import { deriveRoute, scrubPrice, PRICE_DEFLECTION, asksAboutPrice, lastUserBlock } from './rules.js';
 import { settings } from './config.js';
 import * as store from './db.js';
 
@@ -48,19 +48,23 @@ export async function evaluateTurn(p) {
   const call = await store.upsertCall(p);
   const history = await store.historyFor(call.caller_phone, call.id);
   const { json, usage } = await decide({ transcript: p.transcript, history, lite: true });
+  const latest = lastUserBlock(p.transcript);
+  json.asking_price = asksAboutPrice(latest); // the pricing line is only ever said to someone who asked about money
   const verdict = deriveRoute(json, { clarifyCount: call.clarify_count, maxClarify: settings.maxClarify() });
-  return { call, json, usage, verdict, transcript: p.transcript };
+  return { call, json, usage, verdict, transcript: p.transcript, latest };
 }
 
 /** Save what evaluateTurn decided. One statement for the decision, one for the costs. */
-export async function persistTurn({ call, json, usage, verdict, transcript }) {
+export async function persistTurn({ call, json, usage, verdict, transcript, latest = '' }) {
   await Promise.all([
     store.saveTurnDecision(call.id, {
       transcript,
       decision: { ...json, criteria: verdict.criteria, overrides: verdict.overrides },
       route: verdict.route,
       reasonCodes: verdict.reasonCodes,
-      clarified: verdict.route === 'CLARIFY' && !json.caller_question // a question from the caller is not a missed answer
+      // Counts toward the limit only when the caller really answered (4+ words) and did not ask something themselves. Broken fragments
+      // ("Listen. Listen.") and small talk must not use up the clarifying turns and end the call.
+      clarified: verdict.route === 'CLARIFY' && !json.caller_question && latest.split(/\s+/).filter(Boolean).length >= 4
     }),
     store.insertCosts(call.id, geminiCostRows(usage))
   ]);

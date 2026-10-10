@@ -33,3 +33,18 @@ test('a clarifying turn that carries a caller question answers first', () => {
   const d = directiveFor({ route: 'CLARIFY', question: 'Which area?', caller_question: true }, {});
   assert.match(d.directive, /Answer it first/);
 });
+
+import { asksAboutPrice, lastUserBlock } from '../src/rules.js';
+test('only a question about money counts as a price question', () => {
+  assert.equal(asksAboutPrice('But I wanted to inquire about this cost.'), true);
+  assert.equal(asksAboutPrice('How much would it be for a 2 BHK?'), true);
+  assert.equal(asksAboutPrice('kitna kharcha aayega'), true);
+  assert.equal(asksAboutPrice('मला किंमत सांगा'), true);
+  assert.equal(asksAboutPrice('I know. But do you speak Marathi?'), false);
+  assert.equal(asksAboutPrice('Listen. Listen. Listen.'), false);
+  assert.equal(asksAboutPrice('I want to redo my two BHK in Baner'), false);
+});
+test('the latest caller turn is the unbroken run of USER lines at the end', () => {
+  assert.equal(lastUserBlock('AGENT: Hi\nUSER: hello\nAGENT: Which area?\nUSER: Baner\nUSER: near the road'), 'Baner near the road');
+  assert.equal(lastUserBlock('USER: hi\nAGENT: bye'), '');
+});

@@ -95,7 +95,11 @@ export function isPlainQuestion(verdict, state = {}) {
   return verdict.route === 'CLARIFY' && !deflecting && !verdict.caller_question && Boolean(verdict.question && verdict.question.trim());
 }
 
-const GOODBYE_AGAIN = 'Thank you for calling Aangan Studio. Goodbye.';
+const GOODBYES = [
+  'Thank you for calling Aangan Studio. Goodbye.',
+  'Our designer will be in touch. Thank you, and take care.',
+  'Thank you again. Have a lovely day.'
+];
 const SAFE_RETRY ='Sorry, could you say that once more?';
 const SAFE_HANDOVER = 'I am sorry, we are having a little trouble. A team member will call you back shortly. Thank you for calling Aangan Studio.';
 
@@ -166,7 +170,10 @@ function onConnection(ws, callId) {
     if (state.closing) {
       // Keep the rest of the conversation in the record, even though nothing is decided on it any more.
       await store.saveTranscript(String(msg.call_id ?? callId), transcript).catch((e) => console.error('[byol] could not save transcript:', e.message));
-      reply(GOODBYE_AGAIN, true);
+      // Vaani may keep the line open after end_call while the caller talks on. Vary the words, then stay quiet rather than repeat.
+      const n = state.goodbyes ?? 0;
+      state.goodbyes = n + 1;
+      reply(n < GOODBYES.length ? GOODBYES[n] : '', true);
       return;
     }
 

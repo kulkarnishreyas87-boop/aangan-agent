@@ -57,6 +57,25 @@ const PRICE_RE = new RegExp(
   'i'
 );
 
+/** The caller's latest turn: the unbroken run of USER lines at the end of the transcript (Vaani splits one breath into several lines). */
+export function lastUserBlock(transcript) {
+  const lines = String(transcript ?? '').split(/\r?\n/).filter((l) => l.trim());
+  const out = [];
+  for (let i = lines.length - 1; i >= 0 && /^\s*USER\s*:/i.test(lines[i]); i--) out.unshift(lines[i].replace(/^\s*USER\s*:\s*/i, ''));
+  return out.join(' ').trim();
+}
+
+const PRICE_ASK_RE = new RegExp(
+  [
+    '\\b(?:cost|costs|costing|price|prices|pricing|priced|rate|rates|charge|charges|charged|fee|fees|quote|quotation|estimate|how much)\\b',
+    '\\b(?:kitna|kitne|kitni|kharcha|kharch|kimat|kimmat|paise|paisa|daam|dam|bhav|kiti|kimmat|kharch)\\b',
+    '(?:कितना|कितने|कितनी|खर्च|खर्चा|कीमत|किंमत|दाम|भाव|पैसे|पैसा|रेट|किती|शुल्क)'
+  ].join('|'),
+  'i'
+);
+/** Did the caller's latest turn ask about money? Decided here, not by the model: a question about language or timing must never get the pricing line. */
+export const asksAboutPrice = (text) => PRICE_ASK_RE.test(String(text ?? ''));
+
 /** True when text contains something that reads like a price, rate or cost ratio. Used on every string we hand to the voice agent. */
 export function containsPriceFigure(text) {
   return PRICE_RE.test(String(text ?? ''));
