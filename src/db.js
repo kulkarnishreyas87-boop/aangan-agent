@@ -160,6 +160,9 @@ export async function createHandoff(callId) {
 }
 export const setHandoffMessage = (id, emailId) => q('UPDATE handoffs SET email_message_id=$2 WHERE id=$1', [id, emailId]);
 /** Several cost rows in one round trip (a turn writes four). */
+/** Latest full transcript of a call that is still open (used after the agent has said goodbye). */
+export const saveTranscript = (externalCallId, transcript) => q('UPDATE calls SET transcript=$2, updated_at=now() WHERE external_call_id=$1 AND finalized_at IS NULL', [externalCallId, transcript]);
+
 /** The voice link closed: that is the last moment of the call. */
 export const touchCall = (externalCallId) => q('UPDATE calls SET updated_at=now() WHERE external_call_id=$1 AND finalized_at IS NULL', [externalCallId]);
 

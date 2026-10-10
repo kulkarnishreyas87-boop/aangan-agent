@@ -84,3 +84,16 @@ export async function sweepStaleCalls({ quietMinutes = 3 } = {}) {
   if (done.length) await drain();
   return done;
 }
+
+/**
+ * A call that ended by design (the agent said goodbye after a decline, escalation or wrap-up) is finalised as soon as the voice link
+ * closes, so the dashboard does not wait for the sweeper or the webhook. Idempotent with both.
+ */
+export async function finalizeEndedCall(externalCallId) {
+  await store.touchCall(externalCallId);
+  const c = await store.callByExternalId(externalCallId);
+  if (!c || c.finalized_at || !c.transcript) return null;
+  const r = await finalizeCall({ externalCallId, callerPhone: c.caller_phone, endedAt: new Date(), durationS: null, transcript: c.transcript });
+  await drain();
+  return r;
+}

@@ -88,7 +88,15 @@ export async function finalizeCall(p) {
   let verdict;
   let note = null;
 
-  if (tooShort) {
+  // The agent already declined this caller on the call itself (and said so out loud). The record must match what the caller was
+  // told, so that decision stands: no second opinion, and a short call is a decline, not a dropped call.
+  const declinedLive = call.route === 'DECLINE' && call.reason_codes?.length > 0;
+
+  if (declinedLive) {
+    verdict = { route: 'DECLINE', reasonCodes: call.reason_codes, flags: [], criteria: call.decision?.criteria ?? {} };
+    note = declineNote(verdict.reasonCodes);
+    decision = { ...(call.decision ?? {}), summary: call.decision?.summary ?? note };
+  } else if (tooShort) {
     // Dropped or empty call: nothing to decide. A person calls the number back.
     verdict = { route: 'LOG_ONLY', reasonCodes: ['dropped_call'], flags: [], criteria: {} };
     note = 'Call dropped before the caller said enough. Call back.';

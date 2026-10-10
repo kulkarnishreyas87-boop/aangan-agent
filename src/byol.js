@@ -11,6 +11,8 @@ import { verifyByolToken } from './vaani.js';
 import { evaluateTurn, persistTurn, toVaaniReply } from './pipeline.js';
 import { speak } from './gemini.js';
 import { geminiCostRows } from './pipeline.js';
+import { finalizeEndedCall } from './vaani-events.js';
+import { background } from './background.js';
 import { scrubPrice, PRICE_DEFLECTION } from './rules.js';
 import * as store from './db.js';
 import { restoreUrl } from './url.js';
@@ -27,7 +29,7 @@ const TOPIC = {
 };
 const DECLINE_WHY = {
   service_area: 'we only work in Pune and Pimpri-Chinchwad because our execution depends on our own contractors being on site',
-  real_project: 'we only take projects where we do both the design and the execution',
+  real_project: 'we take projects where we do both the design and the execution. If the caller described no project at all, or only wants advice, say kindly that it does not sound like there is a project to take on right now, and that they are very welcome to call when there is. Say it once and keep it short',
   timeline: 'our design phase takes 3 to 4 weeks and a room 8 to 10 weeks, so we cannot do justice to that deadline; offer to start after their date',
   budget: 'the budget they mentioned is well below what a project of that scope costs with us, so a local contractor may suit them better; say it kindly and do not mention any number',
   decision_maker: 'the decision maker needs to be part of the conversation'
@@ -83,6 +85,7 @@ export function isPlainQuestion(verdict, state = {}) {
   return verdict.route === 'CLARIFY' && !deflecting && Boolean(verdict.question && verdict.question.trim());
 }
 
+const GOODBYE_AGAIN = 'Thank you for calling Aangan Studio. Goodbye.';
 const SAFE_RETRY ='Sorry, could you say that once more?';
 const SAFE_HANDOVER = 'I am sorry, we are having a little trouble. A team member will call you back shortly. Thank you for calling Aangan Studio.';
 
@@ -117,7 +120,12 @@ function onConnection(ws, callId) {
   ws.on('error', (e) => console.error(`[byol] socket error on call ${callId}:`, e.message));
   // The voice link is open for the length of the call, so its open and close times are our own measure of call duration. They do not
   // depend on Vaani's webhook. Closing marks the last moment of the call; the sweeper or the webhook then finalises it.
-  ws.on('close', () => { if (state.externalCallId) store.touchCall(state.externalCallId).catch((e) => console.error('[byol] could not record call end:', e.message)); });
+  ws.on('close', () => {
+    if (!state.externalCallId) return;
+    // The agent already said goodbye: the call is over, so finalise it now. Otherwise only note the time; the webhook or sweeper finishes it.
+    const work = state.closing ? finalizeEndedCall(state.externalCallId) : store.touchCall(state.externalCallId);
+    background(work, { waitMs: 45000 }).catch((e) => console.error('[byol] could not record call end:', e.message));
+  });
 
   // Handshake frames, in this order. Vaani ignores their content.
   send({ interaction_type: 'config' });
@@ -144,6 +152,13 @@ function onConnection(ws, callId) {
       return true;
     };
     if (!transcript) { reply(SAFE_RETRY, false); return; }
+    // Already said goodbye: do not repeat the explanation if the caller keeps talking. One short line, then hang up.
+    if (state.closing) {
+      // Keep the rest of the conversation in the record, even though nothing is decided on it any more.
+      await store.saveTranscript(String(msg.call_id ?? callId), transcript).catch((e) => console.error('[byol] could not save transcript:', e.message));
+      reply(GOODBYE_AGAIN, true);
+      return;
+    }
 
     try {
       const externalCallId = String(msg.call_id ?? callId);
@@ -172,6 +187,7 @@ function onConnection(ws, callId) {
       }
       state.failures = 0;
       const sent = reply(text, endCall || ENDING_ROUTES.has(verdict.route));
+      if (sent && (endCall || ENDING_ROUTES.has(verdict.route))) state.closing = true;
       if (sent && verdict.deflect_price && !state.priceDeflected) {
         state.priceDeflected = true;
         await store.saveByolState(externalCallId, { askedAvailability: state.askedAvailability, availabilityAsks: state.availabilityAsks, priceDeflected: true });
