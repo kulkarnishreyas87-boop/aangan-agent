@@ -8,8 +8,9 @@
 // studio playbook. Every word we send is passed through the price filter, so nothing priced can ever be spoken.
 import { WebSocketServer } from 'ws';
 import { verifyByolToken } from './vaani.js';
-import { decideTurn, geminiCostRows } from './pipeline.js';
+import { evaluateTurn, persistTurn, toVaaniReply } from './pipeline.js';
 import { speak } from './gemini.js';
+import { geminiCostRows } from './pipeline.js';
 import { scrubPrice, PRICE_DEFLECTION } from './rules.js';
 import * as store from './db.js';
 import { restoreUrl } from './url.js';
@@ -76,7 +77,13 @@ export function directiveFor(reply, state = {}) {
   return { directive: parts.join('\n'), endCall };
 }
 
-const SAFE_RETRY = 'Sorry, could you say that once more?';
+/** A turn that only asks the next question, with no price to deflect: the decision call's own wording can be spoken as it is. */
+export function isPlainQuestion(verdict, state = {}) {
+  const deflecting = verdict.deflect_price && !state.priceDeflected;
+  return verdict.route === 'CLARIFY' && !deflecting && Boolean(verdict.question && verdict.question.trim());
+}
+
+const SAFE_RETRY ='Sorry, could you say that once more?';
 const SAFE_HANDOVER = 'I am sorry, we are having a little trouble. A team member will call you back shortly. Thank you for calling Aangan Studio.';
 
 /** Role names are Vaani's: system first, then user and assistant. */
@@ -142,13 +149,25 @@ function onConnection(ws, callId) {
         Object.assign(state, await store.loadByolState(externalCallId));
         state.loaded = true;
       }
-      const verdict = await decideTurn({ externalCallId, transcript });
+      const ev = await evaluateTurn({ externalCallId, transcript });
+      const verdict = toVaaniReply({ ...ev.verdict, question: ev.json.next_question, availabilityGiven: ev.json.availability_given });
       const { directive, endCall } = directiveFor(verdict, state);
-      const call = await store.upsertCall({ externalCallId });
-      const { json, usage } = await speak({ transcript, directive });
-      for (const c of geminiCostRows(usage)) await store.insertCost(call.id, c);
+      // The caller is waiting: save this turn while the reply is being written, not before it. The next turn waits for the save (chain).
+      const saved = persistTurn(ev);
+      let text;
+      if (isPlainQuestion(verdict, state)) {
+        // Fast path: the decision call already wrote the spoken line (a brief acknowledgment and one question), so the second
+        // Gemini call is skipped. About a third less waiting on the turns that make up most of a call.
+        await saved;
+        text = verdict.question;
+      } else {
+        let json, usage;
+        try { ({ json, usage } = await speak({ transcript, directive })); } finally { await saved; }
+        await store.insertCosts(ev.call.id, geminiCostRows(usage));
+        text = json.reply;
+      }
       state.failures = 0;
-      const sent = reply(json.reply, endCall || ENDING_ROUTES.has(verdict.route));
+      const sent = reply(text, endCall || ENDING_ROUTES.has(verdict.route));
       if (sent && verdict.deflect_price && !state.priceDeflected) {
         state.priceDeflected = true;
         await store.saveByolState(externalCallId, { askedAvailability: state.askedAvailability, availabilityAsks: state.availabilityAsks, priceDeflected: true });

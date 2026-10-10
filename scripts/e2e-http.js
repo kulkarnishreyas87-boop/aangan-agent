@@ -86,7 +86,7 @@ try {
   const swept = await sweepStaleCalls({ quietMinutes: 3 });
   const sweptRow = (await q('SELECT finalized_at, route FROM calls WHERE id=$1', [stale.rows[0].id])).rows[0];
   check('a quiet call with no webhook is finalised by the sweeper', swept.some((x) => x.callId == stale.rows[0].id) && sweptRow.finalized_at && sweptRow.route, JSON.stringify(sweptRow));
-  await q('DELETE FROM costs WHERE call_id=$1', [stale.rows[0].id]);
+  for (const t of ['costs', 'sync_log', 'handoffs', 'bookings']) await q(`DELETE FROM ${t} WHERE call_id=$1`, [stale.rows[0].id]);
   await q('DELETE FROM outbox WHERE payload::text LIKE $1', ['%' + stale.rows[0].id + '%']);
   await q('DELETE FROM calls WHERE id=$1', [stale.rows[0].id]);
   process.env.DASHBOARD_PASSWORD = savedPw;

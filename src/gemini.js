@@ -77,8 +77,20 @@ const DECISION_SCHEMA = {
   required: ['criteria', 'extracted', 'existing_client_complaint', 'asking_price', 'availability_given', 'call_complete', 'summary']
 };
 
+/**
+ * Live-call variant: statuses only, no evidence text and no summary. Roughly 40% fewer output tokens, and output tokens are what
+ * the caller waits for. The end-of-call decision (full schema) is what the dashboard, the handoff and HubSpot use.
+ */
+const LITE_SCHEMA = (() => {
+  const s = structuredClone(DECISION_SCHEMA);
+  for (const k of Object.keys(s.properties.criteria.properties)) s.properties.criteria.properties[k] = { type: 'OBJECT', properties: { status: STATUS }, required: ['status'] };
+  delete s.properties.summary;
+  s.required = s.required.filter((r) => r !== 'summary');
+  return s;
+})();
+
 /** Decide on the transcript so far. `history` is a short text about earlier calls from this number (no phone number). */
-export async function decide({ transcript, history = '' }) {
+export async function decide({ transcript, history = '', lite = false }) {
   const system = [
     "You are the decision layer for Aangan Studio's phone enquiry agent. Decide using ONLY the rubric below.",
     'Rubric (Nikhil Deshpande, studio founder):',
@@ -92,12 +104,15 @@ export async function decide({ transcript, history = '' }) {
     '- Set existing_client_complaint true only when the caller is an existing client complaining about an ongoing project.',
     '- Set asking_price true ONLY when the caller\'s most recent message asks what it costs. If they asked earlier and the conversation has moved on, set it false.',
     '- Set availability_given true only when the caller has said when they are free for a first consultation (days or times), or said any time works. Otherwise false.',
-    '- next_question: ONE direct question for the first unclear criterion among real_project, service_area, timeline. Never mention any price, rate or number of rupees.',
+    lite
+      ? "- next_question: the exact words the phone agent says next, in the caller's language: a brief warm acknowledgment of what they just said (a few words, no promises), then ONE short question for the first unclear criterion among real_project, service_area, timeline. At most two short sentences. Never mention any price, rate or number of rupees."
+      : '- next_question: ONE direct question for the first unclear criterion among real_project, service_area, timeline. Never mention any price, rate or number of rupees.',
     '- needed_by_weeks: weeks from now until the caller needs the work finished, only if they stated a date or event; otherwise null.',
-    '- Do not include the caller\'s phone number anywhere.'
+    '- Do not include the caller\'s phone number anywhere.',
+    '- Be brief: every evidence note at most 10 words, summary one sentence of at most 25 words. Shorter output means a faster reply.'
   ].join('\n');
   const user = `Earlier calls from this number:\n${history || 'None.'}\n\nTranscript so far:\n${transcript}`;
-  return generate({ system, user, schema: DECISION_SCHEMA });
+  return generate({ system, user, schema: lite ? LITE_SCHEMA : DECISION_SCHEMA });
 }
 
 const NOTE_SCHEMA = { type: 'OBJECT', properties: { note: { type: 'STRING' } }, required: ['note'] };

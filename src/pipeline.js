@@ -39,19 +39,36 @@ export function toVaaniReply(d) {
   return reply;
 }
 
-export async function decideTurn(p) {
+/**
+ * Decide the turn WITHOUT writing anything: the caller is waiting, so the database writes (persistTurn) are done while the spoken
+ * reply is being generated instead of before it.
+ */
+export async function evaluateTurn(p) {
   const call = await store.upsertCall(p);
   const history = await store.historyFor(call.caller_phone, call.id);
-  const { json, usage } = await decide({ transcript: p.transcript, history });
+  const { json, usage } = await decide({ transcript: p.transcript, history, lite: true });
   const verdict = deriveRoute(json, { clarifyCount: call.clarify_count, maxClarify: settings.maxClarify() });
-  await store.saveTurnDecision(call.id, {
-    transcript: p.transcript,
-    decision: { ...json, criteria: verdict.criteria, overrides: verdict.overrides },
-    route: verdict.route,
-    reasonCodes: verdict.reasonCodes,
-    clarified: verdict.route === 'CLARIFY'
-  });
-  for (const c of geminiCostRows(usage)) await store.insertCost(call.id, c);
+  return { call, json, usage, verdict, transcript: p.transcript };
+}
+
+/** Save what evaluateTurn decided. One statement for the decision, one for the costs. */
+export async function persistTurn({ call, json, usage, verdict, transcript }) {
+  await Promise.all([
+    store.saveTurnDecision(call.id, {
+      transcript,
+      decision: { ...json, criteria: verdict.criteria, overrides: verdict.overrides },
+      route: verdict.route,
+      reasonCodes: verdict.reasonCodes,
+      clarified: verdict.route === 'CLARIFY'
+    }),
+    store.insertCosts(call.id, geminiCostRows(usage))
+  ]);
+}
+
+export async function decideTurn(p) {
+  const ev = await evaluateTurn(p);
+  await persistTurn(ev);
+  const { json, verdict } = ev;
   return toVaaniReply({ ...verdict, question: json.next_question, availabilityGiven: json.availability_given });
 }
 

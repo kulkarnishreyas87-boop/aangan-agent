@@ -159,6 +159,13 @@ export async function createHandoff(callId) {
   return (await q('INSERT INTO handoffs (call_id) VALUES ($1) ON CONFLICT (call_id) DO UPDATE SET call_id = EXCLUDED.call_id RETURNING *', [callId])).rows[0];
 }
 export const setHandoffMessage = (id, emailId) => q('UPDATE handoffs SET email_message_id=$2 WHERE id=$1', [id, emailId]);
+/** Several cost rows in one round trip (a turn writes four). */
+export async function insertCosts(callId, rows) {
+  if (!rows.length) return;
+  const params = [callId];
+  const values = rows.map((c) => { params.push(c.provider, c.unitType, c.units, c.amountInr ?? null); const n = params.length; return `($1,$${n - 3},$${n - 2},$${n - 1},$${n})`; });
+  await q(`INSERT INTO costs (call_id, provider, unit_type, units, amount_inr) VALUES ${values.join(',')}`, params);
+}
 export const insertCost = (callId, c) => q('INSERT INTO costs (call_id, provider, unit_type, units, amount_inr) VALUES ($1,$2,$3,$4,$5)', [callId, c.provider, c.unitType, c.units, c.amountInr ?? null]);
 export const getHandoff = async (id) => (await q('SELECT * FROM handoffs WHERE id=$1', [id])).rows[0];
 /** Returns true only for the first designer to claim. */
