@@ -23,7 +23,7 @@ export const num = (name, fallback = undefined) => {
 export const settings = {
   port: () => num('PORT', 8080),
   // Decision loop
-  maxClarify: () => num('MAX_CLARIFY_TURNS', 3),
+  maxClarify: () => num('MAX_CLARIFY_TURNS', 6),
   minTranscriptChars: () => num('MIN_TRANSCRIPT_CHARS', 60),
   // Scheduling
   scheduleWindowDays: () => num('SCHEDULE_WINDOW_DAYS', 14),

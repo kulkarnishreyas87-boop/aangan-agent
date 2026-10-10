@@ -119,9 +119,13 @@ export async function decide({ transcript, history = '', lite = false }) {
     "- Set caller_question true when the caller's most recent message asks the studio something it should answer (what it does, how it works, how long things take, where it works, whether it can help with something), other than price. False for greetings, \"are you there?\", filler, and plain answers to our questions.",
     '- Set availability_given true only when the caller has said when they are free for a first consultation (days or times), or said any time works. Otherwise false.',
     lite
-      ? "- next_question: the exact words the phone agent says next, in the caller's language: a brief warm acknowledgment of what they just said (a few words, no promises), then ONE short question for the first unclear criterion among real_project, service_area, timeline. At most two short sentences. Never mention any price, rate or number of rupees. This is mid-call: do not say good morning, good afternoon, good evening or good night." + ` (It is ${timeOfDay().label} in India now; only if the caller greets you first, you may return that greeting.)`
+      ? "- next_question: the exact words the phone agent says next, in the caller's language: a warm, specific acknowledgment that shows you listened (use their own words, for example the place or the type of home they just named; if they asked how you are, answer that kindly first), then ONE short question for the first unclear criterion among real_project, service_area, timeline. At most two short sentences. Never mention any price, rate or number of rupees. This is mid-call: do not say good morning, good afternoon, good evening or good night." + ` (It is ${timeOfDay().label} in India now; only if the caller greets you first, you may return that greeting.)`
       : '- next_question: ONE direct question for the first unclear criterion among real_project, service_area, timeline. Never mention any price, rate or number of rupees.',
     '- needed_by_weeks: weeks from now until the caller needs the work finished, only if they stated a date or event; otherwise null.',
+    "- The transcript comes from speech recognition: names and places are often misheard or misspelled. Read them generously and write extracted.area as the nearest real Pune or Pimpri-Chinchwad locality (for example 'Banir' or 'Baner' both mean Baner; 'Kotrud' means Kothrud). Judge criteria on what the caller most likely said, not on spelling.",
+    '- Use EVERYTHING the caller has said anywhere in the transcript. Never ask again for something they already told you, even if it came earlier or in a broken sentence.',
+    '- If the caller mentions a type of home (for example 2 BHK) and wants to redo, renovate or design it, real_project passes.',
+    '- Do not end a conversation just because it is slow: callers answer in pieces. Only the rubric decides.',
     '- Do not include the caller\'s phone number anywhere.',
     '- Be brief: every evidence note at most 10 words, summary one sentence of at most 25 words. Shorter output means a faster reply.'
   ].join('\n');
@@ -197,10 +201,16 @@ export async function speak({ transcript, directive }) {
     `Conversation so far:\n${transcript}\n\nSYSTEM DIRECTIVE (follow it exactly):\n${directive}\n\n` +
     'Write only what the agent says next: one to three short spoken sentences, in the caller\'s language.';
   const t = timeOfDay();
+  const conduct =
+    '\n\nHOW TO TREAT THE CALLER (applies to every reply): you are a warm, patient front-desk person who genuinely listens. ' +
+    'First respond to what the caller just said, using their own words (their area, their home, their worry). If they asked a question, answer it clearly and politely before anything else. ' +
+    'If they ask how you are, answer kindly. If you did not catch something, apologise briefly and ask them to repeat it. ' +
+    'Never rush them off the phone and never push them to "consult later" or "wait for a call-back" while they still have something to say or ask. ' +
+    'Do not repeat a question they already answered. Short, natural sentences, no lists, no jargon.';
   const clock =
     `\n\nCURRENT TIME (overrides any greeting in the playbook): it is ${t.clock} in India, so the right greeting now is "${t.greeting}". ` +
     'The call has already been opened with a greeting, so do NOT greet again unless the caller greets you first, and never say "Good morning" unless that is the right greeting now.';
-  return generate({ system: (await agentPrompt()) + clock, user, schema: SPEAK_SCHEMA });
+  return generate({ system: (await agentPrompt()) + conduct + clock, user, schema: SPEAK_SCHEMA });
 }
 
 const CONFIRM_SCHEMA = {

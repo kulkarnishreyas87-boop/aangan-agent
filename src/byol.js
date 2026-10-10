@@ -17,7 +17,6 @@ import { scrubPrice, PRICE_DEFLECTION } from './rules.js';
 import * as store from './db.js';
 import { restoreUrl } from './url.js';
 
-const ENDING_ROUTES = new Set(['DECLINE', 'ESCALATE', 'LOG_ONLY']);
 const MAX_AVAILABILITY_ASKS = 2; // after this many asks we wrap up anyway and let the confirmation call sort out the time
 
 const TOPIC = {
@@ -66,8 +65,13 @@ export function directiveFor(reply, state = {}) {
       endCall = true;
       break;
     case 'LOG_ONLY':
-      parts.push('Say a team member will call them back soon, thank them for calling, and say goodbye.');
-      endCall = true;
+      // Never leave a caller who is still talking. If they have just asked something, answer it and keep the line open.
+      if (reply.caller_question || (reply.deflect_price && !state.priceDeflected)) {
+        parts.push('Do NOT end the call yet. Answer what the caller just asked, clearly and kindly. Then say in one sentence what you have understood about their home or project so far, and ask whether there is anything else they would like to tell or ask before a designer calls them back.');
+      } else {
+        parts.push('Be warm and unhurried. In one short sentence say what you understood from them (their place and project, as far as they told you), thank them for their time, and say a designer from the studio will call them back to go through the details properly. Then say goodbye.');
+        endCall = true;
+      }
       break;
     default:
       parts.push('Ask one short question to understand the project.');
@@ -192,8 +196,8 @@ function onConnection(ws, callId) {
         text = json.reply;
       }
       state.failures = 0;
-      const sent = reply(text, endCall || ENDING_ROUTES.has(verdict.route));
-      if (sent && (endCall || ENDING_ROUTES.has(verdict.route))) state.closing = true;
+      const sent = reply(text, endCall);
+      if (sent && endCall) state.closing = true;
       if (sent && verdict.deflect_price && !state.priceDeflected) {
         state.priceDeflected = true;
         await store.saveByolState(externalCallId, { askedAvailability: state.askedAvailability, availabilityAsks: state.availabilityAsks, priceDeflected: true });

@@ -60,7 +60,7 @@ export async function persistTurn({ call, json, usage, verdict, transcript }) {
       decision: { ...json, criteria: verdict.criteria, overrides: verdict.overrides },
       route: verdict.route,
       reasonCodes: verdict.reasonCodes,
-      clarified: verdict.route === 'CLARIFY'
+      clarified: verdict.route === 'CLARIFY' && !json.caller_question // a question from the caller is not a missed answer
     }),
     store.insertCosts(call.id, geminiCostRows(usage))
   ]);
