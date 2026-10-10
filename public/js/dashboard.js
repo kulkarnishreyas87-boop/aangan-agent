@@ -88,6 +88,7 @@
   // ---------- render ----------
   function render(d) {
     state.data = d;
+    $('#openNote').hidden = !d.open || state.sample;
     const k = d.kpis;
     const h = new Date().getHours();
     $('#greeting').textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ', team';
@@ -228,7 +229,8 @@
 
   // ---------- boot ----------
   fetch('/api/me', { cache: 'no-store' }).then((r) => r.json()).then((m) => {
-    if (m.authed) { showApp(); start(); }
-    else { showLogin(m.enabled ? '' : 'The dashboard login is not set up yet. Ask the developer to set a dashboard password.'); }
+    if (!m.enabled) { $('#logout').hidden = true; showApp(); start(); }   // open dashboard: no login
+    else if (m.authed) { showApp(); start(); }
+    else showLogin('');
   }).catch(() => showLogin('Could not reach the server.'));
 })();

@@ -69,6 +69,23 @@ try {
   check('public stats expose counts only', pub.s === 200 && Object.keys(JSON.parse(pub.t)).sort().join() === 'last_24h,qualified,total', pub.t);
   let locked = 0; for (let i = 0; i < 8; i++) { const r = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '6.6.6.6' }, body: JSON.stringify({ password: 'nope' + i }) }); if (r.status === 429) locked++; }
   check('repeated wrong passwords from one address are locked out', locked >= 1, locked + ' of 8 refused with 429');
+  // ---- open mode: no DASHBOARD_PASSWORD means no login, but customers' full names and notes stay hidden ----
+  await q("UPDATE calls SET finalized_at=now(), route='QUALIFY', handoff_note='PRIVATE-NOTE-9f3a', decision=$2 WHERE id=$1", [callId, { extracted: { name: 'Priya Sharma', area: 'Kothrud' } }]);
+  const savedPw = process.env.DASHBOARD_PASSWORD; delete process.env.DASHBOARD_PASSWORD;
+  const me = JSON.parse((await req('GET', '/api/me')).t);
+  check('without a password the dashboard reports itself as open', me.enabled === false);
+  const open = await req('GET', '/api/dashboard');
+  const oj = open.s === 200 ? JSON.parse(open.t) : {};
+  check('an open dashboard needs no login', open.s === 200 && oj.open === true, 'HTTP ' + open.s);
+  const mine = (oj.recent ?? []).find((r) => r.id === callId);
+  check('open view shows only the first name', mine?.name === 'Priya' && !/Sharma/.test(open.t), mine && mine.name);
+  check('open view leaves out the handoff notes', mine && mine.note === null && !/PRIVATE-NOTE-9f3a/.test(open.t));
+  process.env.DASHBOARD_PASSWORD = savedPw;
+  const closed = await req('GET', '/api/dashboard');
+  check('setting a password again closes it', closed.s === 401);
+  const withNotes = await req('GET', '/api/dashboard', undefined, { cookie: sess });
+  check('a logged-in view still shows the full details', /PRIVATE-NOTE-9f3a/.test(withNotes.t) && /Priya Sharma/.test(withNotes.t));
+
   const css = await fetch(base + '/css/site.css'); const jpg = await fetch(base + '/img/hero-1.jpg'); const dashPage = await fetch(base + '/dashboard');
   check('the site files are served with the right types', css.status === 200 && /text\/css/.test(css.headers.get('content-type')) && jpg.status === 200 && jpg.headers.get('content-type') === 'image/jpeg' && dashPage.status === 200 && /text\/html/.test(dashPage.headers.get('content-type')));
   const trav = await Promise.all(['/..%2f.env', '/%2e%2e/%2e%2e/.env', '/css/..%2f..%2fpackage.json', '/js/../../.env'].map((p) => req('GET', p)));

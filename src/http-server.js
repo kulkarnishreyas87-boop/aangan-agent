@@ -147,8 +147,9 @@ const routes = {
   },
   'GET /api/dashboard': async (req, res) => {
     res.setHeader('cache-control', 'no-store');
-    if (!auth.isAuthed(req)) return json(res, 401, { error: 'login required' });
-    return json(res, 200, await dashboardData());
+    // No DASHBOARD_PASSWORD means an open dashboard (redacted). With a password, a valid login is required and nothing is redacted.
+    if (auth.dashboardEnabled() && !auth.isAuthed(req)) return json(res, 401, { error: 'login required' });
+    return json(res, 200, await dashboardData({ open: !auth.dashboardEnabled() }));
   },
   'GET /api/public-stats': async (req, res) => {
     res.setHeader('cache-control', 'public, max-age=15');

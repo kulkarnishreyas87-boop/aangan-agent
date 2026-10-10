@@ -22,7 +22,15 @@ export async function publicStats() {
   return rows[0];
 }
 
-export async function dashboardData() {
+/** First name only. An open dashboard must not show a customer's full name. */
+const firstName = (n) => (n ? String(n).trim().split(/\s+/)[0] : n);
+
+/**
+ * opts.open = true when there is no login. Then names are cut to a first name and the handoff notes (which hold the details a
+ * customer gave: size, budget hints, family) are left out. Counts, areas, masked numbers and booking times stay.
+ */
+export async function dashboardData(opts = {}) {
+  const open = Boolean(opts.open);
   const [totals, daily, routes, reasons, recent, upcoming, usage, outcomes, live] = await Promise.all([
     q(`SELECT count(*)::int AS total,
         count(*) FILTER (WHERE created_at > now() - interval '24 hours')::int AS last_24h,
@@ -69,6 +77,7 @@ export async function dashboardData() {
   const u = usage.rows[0];
   return {
     generatedAt: new Date().toISOString(),
+    open,
     live: live.rows[0].n,
     kpis: {
       total: t.total, last24h: t.last_24h, qualified: t.qualified, declined: t.declined, escalated: t.escalated, logOnly: t.log_only,
@@ -80,12 +89,12 @@ export async function dashboardData() {
     routes: routes.rows,
     declineReasons: reasons.rows,
     recent: recent.rows.map((r) => ({
-      id: r.id, at: r.created_at, done: Boolean(r.finalized_at), phone: maskPhone(r.caller_phone), name: r.name, area: r.area,
+      id: r.id, at: r.created_at, done: Boolean(r.finalized_at), phone: maskPhone(r.caller_phone), name: open ? firstName(r.name) : r.name, area: r.area,
       summary: [r.property_type, r.scope].filter(Boolean).join(', ') || null, route: r.route, reasons: r.reason_codes ?? [],
-      durationS: r.duration_s, note: r.handoff_note, inHubspot: r.in_hubspot, outcome: r.outcome,
+      durationS: r.duration_s, note: open ? null : r.handoff_note, inHubspot: r.in_hubspot, outcome: r.outcome,
       booking: r.booking_start ? { start: r.booking_start, status: r.booking_status, type: r.visit_type, confirmed: Boolean(r.confirmed_at) } : null
     })),
-    upcoming: upcoming.rows.map((b) => ({ id: b.id, start: b.start_at, type: b.visit_type, name: b.name, area: b.area, confirmed: Boolean(b.confirmed_at) })),
+    upcoming: upcoming.rows.map((b) => ({ id: b.id, start: b.start_at, type: b.visit_type, name: open ? firstName(b.name) : b.name, area: b.area, confirmed: Boolean(b.confirmed_at) })),
     usage: { tokensIn: Number(u.tokens_in), tokensOut: Number(u.tokens_out), costInr: u.cost_inr == null ? null : Number(u.cost_inr), callsCosted: u.calls_costed },
     system: {
       outbox: await store.outboxStats(),

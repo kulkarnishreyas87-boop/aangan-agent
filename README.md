@@ -45,10 +45,10 @@ Because the server writes every reply (BYOL), Vaani's own LLM and prompt are not
 ## The website and dashboard
 
 - **Public site** at `/`: an animated landing page (rotating interior photos, a live call preview, how it works, a typed example call, a photo gallery). It shows only counts from `/api/public-stats`.
-- **Dashboard** at `/dashboard`, behind a password (`DASHBOARD_PASSWORD`, signed HttpOnly cookie, 12 h, 6 wrong tries per 15 minutes per address). Live KPIs, a 14-day chart, outcome donut, lead funnel, decline reasons, recent calls with notes, upcoming consultations, system health, connections and AI usage. It refreshes every 10 s and shows a toast when a call arrives. Phone numbers are masked. The "Preview with sample data" button shows the design with clearly labelled fake data.
+- **Dashboard** at `/dashboard`. By default it is **open: no login**. Because it is public, it shows only first names, areas, masked phone numbers and totals, and leaves out the handoff notes. To lock it, set `DASHBOARD_PASSWORD`: it then needs a login (signed HttpOnly cookie, 12 h, 6 wrong tries per 15 minutes per address) and shows full details. Live KPIs, a 14-day chart, outcome donut, lead funnel, decline reasons, recent calls, upcoming consultations, system health, connections and AI usage; refreshes every 10 s with a toast when a call arrives. The "Preview with sample data" button shows the design with clearly labelled fake data.
 - Files live in `public/` (no build step, no front-end dependencies: charts are hand-drawn SVG). The server also serves them itself, so a plain Node host behaves like Vercel. Path traversal and source files are blocked and tested.
 - Photos are open-licensed images from Wikimedia Commons, resized and stored in `public/img/`; `credits.json` has each photographer and licence and the footer credits them. Replace them with your own project photos any time.
-- Dashboard data comes from `src/dashboard-data.js`; login from `src/auth.js`. Set `DASHBOARD_PASSWORD` (and optionally `DASHBOARD_SESSION_SECRET`) in `.env`.
+- Dashboard data comes from `src/dashboard-data.js`; login from `src/auth.js`. Optionally set `DASHBOARD_PASSWORD` (and `DASHBOARD_SESSION_SECRET`) in `.env` to lock it.
 
 ## Deploying on Vercel
 
