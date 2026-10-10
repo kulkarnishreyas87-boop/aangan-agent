@@ -44,6 +44,12 @@ try {
   const cronOk = await req('GET', '/cron/drain', undefined, { authorization: 'Bearer http-test-cron-secret' });
   check('cron endpoint with the right secret drains the outbox', cronOk.s === 200 && JSON.parse(cronOk.t).ok === true, cronOk.t);
 
+  const front = await req('GET', '/');
+  check('the front address shows a status page, not a bare error', front.s === 200 && /<title>Aangan Enquiry Agent<\/title>/.test(front.t) && /calls handled/.test(front.t), 'HTTP ' + front.s);
+  check('the status page leaks no secret or phone number', !/(secret|token|api[_-]?key|\+91\d{6,})/i.test(front.t.replace(/Auth Token|private secret/gi, '')) , '');
+  const fav = await req('GET', '/favicon.ico');
+  check('favicon request is answered quietly', fav.s === 204);
+
   const unknown = await req('GET', '/nope');
   check('unknown path returns 404', unknown.s === 404);
 

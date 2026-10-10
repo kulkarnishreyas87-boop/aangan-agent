@@ -16,6 +16,7 @@ import { drain } from './worker.js';
 import { background } from './background.js';
 import { safeEqual } from './vaani.js';
 import { restoreUrl } from './url.js';
+import { statusPage } from './status-page.js';
 
 const MAX_BODY = 2_000_000;
 
@@ -118,6 +119,13 @@ const routes = {
     await drain(50);
     return json(res, 200, { ok: true, outbox: await store.outboxStats() });
   },
+  'GET /': async (req, res) => {
+    const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost').split(',')[0].trim();
+    const html = await statusPage(host);
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(html);
+  },
+  'GET /favicon.ico': async (req, res) => { res.writeHead(204); res.end(); },
   'GET /health': async (req, res) => {
     try { return json(res, 200, { ok: true, db: true, outbox: await store.outboxStats() }); }
     catch { return json(res, 503, { ok: false, db: false }); }

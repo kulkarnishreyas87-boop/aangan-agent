@@ -138,6 +138,10 @@ export async function withLock(key, fn) {
   }
 }
 
+export async function callStats() {
+  const { rows } = await q("SELECT count(*)::int AS total, count(*) FILTER (WHERE created_at > now() - interval '24 hours')::int AS last_24h, max(created_at) AS last_at, count(*) FILTER (WHERE route='QUALIFY')::int AS qualified FROM calls WHERE external_call_id NOT LIKE 'sched-probe-%'");
+  return rows[0];
+}
 export async function outboxStats() {
   const { rows } = await q("SELECT count(*) FILTER (WHERE done_at IS NULL AND dead_at IS NULL)::int AS pending, count(*) FILTER (WHERE dead_at IS NOT NULL)::int AS dead FROM outbox");
   return rows[0];
